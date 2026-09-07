@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live News Channels</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0e0f12; --panel:#16181d; --panel2:#1c1f26; --text:#e9e9ee;
+    --muted:#9aa0ab; --accent:#3ea6ff; --active:#22252c; --border:#262a33;
+  }
+  *{box-sizing:border-box}
+  /* .channel sets display:flex explicitly, which otherwise beats the browser's
+     built-in [hidden]{display:none} UA rule (author styles always win over UA
+     styles regardless of specificity) — without this, toggling .hidden on a
+     channel row via JS has no visual effect. */
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);
+       display:flex;flex-direction:column}
+  header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  header small{color:var(--muted)}
+  .hdrbtn{background:none;border:1px solid var(--border);color:var(--muted);font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer}
+  .hdrbtn:hover{color:var(--text);border-color:var(--accent)}
+  .badge.live{background:#1a3a24;color:#4ade80}
+  .badge.offline{background:#2a2c32;color:var(--muted)}
+  .badge.manual{background:#3a2f16;color:#f0b429}
+  .badge.auto{background:#16283a;color:#60a5fa}
+  .badge.error{background:#3a1616;color:#f87171}
+  .layout{display:flex;flex:1;min-height:0;position:relative}
+  nav{width:300px;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;
+      transition:width .28s cubic-bezier(.4,0,.2,1),opacity .2s ease;position:relative}
+  nav.collapsed{width:0;opacity:0;border-right:none;overflow:hidden}
+  .navsearch{position:sticky;top:0;z-index:2;background:var(--panel);padding:10px 12px;border-bottom:1px solid var(--border)}
+  .navsearch input{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:8px 10px;border-radius:6px;font-size:13px}
+  .navsearch input:focus{outline:none;border-color:var(--accent)}
+  .no-results{padding:16px;color:var(--muted);font-size:13px;text-align:center}
+  .navtoggle{
+    position:absolute;top:14px;left:300px;z-index:5;
+    width:26px;height:44px;display:flex;align-items:center;justify-content:center;
+    background:var(--panel2);border:1px solid var(--border);border-left:none;
+    border-radius:0 8px 8px 0;cursor:pointer;color:var(--muted);
+    transition:left .28s cubic-bezier(.4,0,.2,1),background .15s,color .15s;
+  }
+  .navtoggle:hover{background:var(--active);color:var(--text)}
+  .navtoggle.collapsed{left:0;border-radius:0 8px 8px 0}
+  .navtoggle svg{width:14px;height:14px;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+  .navtoggle.collapsed svg{transform:rotate(180deg)}
+  .navtoggle.mobile{display:none}
+  .group-title{padding:12px 16px 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    position:sticky;top:var(--navsearch-h,54px);background:var(--panel);z-index:1}
+  .channel{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent}
+  .channel:hover{background:var(--panel2)}
+  .channel.active{background:var(--active);border-left-color:var(--accent)}
+  .channel .name{font-size:14px}
+  .channel .name small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+  .channel[dir="rtl"] .name{text-align:right}
+  .badge{font-size:10px;padding:2px 6px;border-radius:10px;background:#3a2f16;color:#f0b429;flex-shrink:0}
+  .badge.ok{background:#1a3a24;color:#4ade80}
+  .fixbtn{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 7px;border-radius:6px;cursor:pointer;flex-shrink:0}
+  .fixbtn:hover{color:var(--text);border-color:var(--accent)}
+  .navbackdrop{display:none}
+  main{flex:1;display:flex;flex-direction:column;background:#000}
+  .player-wrap{flex:1;position:relative}
+  .player-wrap iframe{width:100%;height:100%;border:0;display:block}
+  .hint{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(20,20,24,.92);border:1px solid var(--border);
+        border-radius:8px;padding:10px 14px;font-size:13px;color:var(--muted);transition:opacity .6s ease}
+  .hint a{color:var(--accent);margin-left:8px;text-decoration:none}
+  .hint a:hover{text-decoration:underline}
+  .hint.fade{opacity:0;pointer-events:none}
+  .empty{color:var(--muted);display:flex;align-items:center;justify-content:center;height:100%;font-size:14px;text-align:center;padding:40px}
+  .toolbar{padding:8px 14px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px}
+  .toolbar a{color:var(--accent);text-decoration:none}
+  .toolbar a:hover{text-decoration:underline}
+  ::-webkit-scrollbar{width:8px}
+  ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+
+  @media (max-width:720px){
+    header{padding:10px 12px;flex-wrap:wrap;row-gap:6px}
+    header h1{font-size:16px}
+    .hdrbtn{padding:7px 10px}
+    .navtoggle{display:none}
+    .navtoggle.mobile{
+      display:flex;position:static;width:32px;height:32px;border-radius:6px;flex-shrink:0;
+    }
+    nav{
+      position:fixed;top:0;bottom:0;left:0;width:85%;max-width:340px;z-index:20;
+      transform:translateX(0);transition:transform .28s ease;box-shadow:2px 0 16px rgba(0,0,0,.5);
+    }
+    nav.collapsed{transform:translateX(-100%);width:85%;max-width:340px;opacity:1;border-right:1px solid var(--border)}
+    .navbackdrop.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15}
+    .channel{padding:13px 16px}
+    .fixbtn{padding:6px 10px;font-size:12px}
+    .toolbar{flex-wrap:wrap;row-gap:6px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="navtoggle mobile" id="navToggleMobile" title="Toggle channel list" aria-label="Toggle channel list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+    </button>
+    <h1>📺 Live News Channels</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <small id="statusline"></small>
+    <button class="hdrbtn" id="fetchAllBtn" title="Check which channels are live right now">⟳ Fetch All</button>
+    <button class="hdrbtn" id="apiKeyBtn" title="Set your YouTube Data API key">🔑 API Key</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav id="nav">
+    <div class="navsearch"><input type="search" id="channelSearch" placeholder="Filter channels…" aria-label="Filter channels"></div>
+    <div id="navList"></div>
+  </nav>
+  <div class="navbackdrop" id="navBackdrop"></div>
+  <button class="navtoggle" id="navToggle" title="Hide channel list" aria-label="Toggle channel list">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+  </button>
+  <main>
+    <div class="player-wrap" id="playerWrap">
+      <div class="empty" id="startupMsg">Checking how this page was opened…</div>
+    </div>
+    <div class="toolbar" id="toolbar" style="display:none">
+      <span id="nowPlaying"></span>
+      <a id="openYoutube" href="#" target="_blank" rel="noopener">Open on YouTube ↗</a>
+    </div>
+  </main>
+</div>
+
+<!-- Optional local config file — not tracked/shared, holds your API key like a .env file would.
+     If config.js doesn't exist, this just 404s quietly and the page falls back to the
+     🔑 API Key prompt (stored in your browser's localStorage instead). -->
+<script src="config.js"></script>
+
+<script>
+// ---------------------------------------------------------------
+// CHANNEL LIST
+// id: confirmed YouTube channel ID (UC...) -> live embed works immediately
+// id: null -> needs a one-time manual fix (click "Set ID"), saved in localStorage
+// handle: used to build the "Open on YouTube" fallback link
+// ---------------------------------------------------------------
+const CHANNELS = [
+  // ===============================================================
+  // INTERNATIONAL / ENGLISH NEWS
+  // ===============================================================
+  { group: "International News", name: "Al Jazeera English | Live", handle: "aljazeeraenglish", id: "UCNye-wNBqNL5ZzHSJj3l8Bg" },
+  { group: "International News", name: "BBC News", handle: "BBCNews", id: null },
+  { group: "International News", name: "Reuters", handle: "Reuters", id: null },
+  { group: "International News", name: "Associated Press", handle: "AssociatedPress", id: null },
+  { group: "International News", name: "Sky News", handle: "SkyNews", id: null },
+  { group: "International News", name: "CNN", handle: "CNN", id: null },
+  { group: "International News", name: "ABC News", handle: "ABCNews", id: null },
+  { group: "International News", name: "ABC News Australia", handle: "abcnewsaustralia", id: null },
+  { group: "International News", name: "CBS News", handle: "CBSNews", id: null },
+  { group: "International News", name: "NBC News", handle: "NBCNews", id: null },
+  { group: "International News", name: "NBC News NOW", handle: "NBCNewsNOW", id: null },
+  { group: "International News", name: "PBS NewsHour", handle: "PBSNewsHour", id: null },
+  { group: "International News", name: "Bloomberg Television", handle: "BloombergTelevision", id: null },
+  { group: "International News", name: "CNBC", handle: "CNBC", id: null },
+  { group: "International News", name: "C-SPAN", handle: "CSPAN", id: null },
+  { group: "International News", name: "DW News Live", handle: "dwnews", id: "UCknLrEdhRCp1aegoMqRaCZg" },
+  { group: "International News", name: "DW - en vivo", handle: "dwespanol", id: null },
+  { group: "International News", name: "Euronews English Live", handle: "euronews", id: "UCSrZ3UV4jOidv8ppoVuvW9Q" },
+  { group: "International News", name: "France 24 English Live", handle: "france24_en", id: "UCQfwfsi5VrQ8yKZ-UWmAEFg" },
+  { group: "International News", name: "TRT World", handle: "trtworld", id: "UC7fWeaHhqgM4Ry-RMpM2YYw" },
+  { group: "International News", name: "CNA 24/7 LIVE", handle: "channelnewsasia", id: null },
+  { group: "International News", name: "CGTN", handle: "CGTN", id: null },
+  { group: "International News", name: "WION", handle: "WION", id: null },
+  { group: "International News", name: "NHK WORLD-JAPAN", handle: "NHKWORLDJAPAN", id: null },
+  { group: "International News", name: "NDTV Profit Live TV", handle: "NDTVProfitIndia", id: "UC3uJIdRFTGgLWrUziaHbzrg" },
+  { group: "International News", name: "United Nations - LIVE", handle: "unitednations", id: null },
+  { group: "International News", name: "The Guardian", handle: "theguardian", id: null },
+
+  // ===============================================================
+  // ARABIC NEWS
+  // ===============================================================
+  { group: "Arabic News", name: "الجزيرة (Al Jazeera Arabic)", handle: "aljazeera", id: "UCfiwzLy-8yKzIbsmZTzxDgw", rtl: true },
+  { group: "Arabic News", name: "الجزيرة مباشر (Al Jazeera Mubasher)", handle: "aljazeeramubasher", id: null, rtl: true },
+  { group: "Arabic News", name: "العربية (Al Arabiya)", handle: "alarabiya", id: null, rtl: true },
+  { group: "Arabic News", name: "الحدث (Al Hadath)", handle: "AlHadath", id: null, rtl: true },
+  { group: "Arabic News", name: "سكاي نيوز عربية (Sky News Arabia)", handle: "SkyNewsArabia", id: null, rtl: true },
+  { group: "Arabic News", name: "BBC News عربي", handle: "bbcnewsarabic", id: null, rtl: true },
+  { group: "Arabic News", name: "الشرق للأخبار (Asharq News)", handle: "AsharqNews", id: null, rtl: true },
+  { group: "Arabic News", name: "العربي (Alaraby TV)", handle: "alarabytelevision", id: null, rtl: true },
+  { group: "Arabic News", name: "RT Arabic", handle: "RTArabic", id: null, rtl: true },
+  { group: "Arabic News", name: "الميادين (Al Mayadeen)", handle: "AlMayadeen", id: null, rtl: true },
+  { group: "Arabic News", name: "الحرة (Alhurra)", handle: "Alhurra", id: null, rtl: true },
+  { group: "Arabic News", name: "قناة المملكة (AlMamlaka)", handle: "AlMamlakaTV", id: null, rtl: true },
+  { group: "Arabic News", name: "النيل للأخبار (Nile News)", handle: "NileNews", id: null, rtl: true },
+  { group: "Arabic News", name: "الشرق الأوسط", handle: "aawsat", id: null, rtl: true },
+  { group: "Arabic News", name: "TRT عربي", handle: "trtarabi", id: null, rtl: true },
+  { group: "Arabic News", name: "فرانس 24 عربي (France 24 Arabic)", handle: "france24arabic", id: null, rtl: true },
+  { group: "Arabic News", name: "DW عربية (DW Arabic)", handle: "dwarabic", id: null, rtl: true },
+  { group: "Arabic News", name: "يورونيوز بالعربية (Euronews Arabic)", handle: "euronewsarabic", id: null, rtl: true },
+
+  // ===============================================================
+  // EGYPTIAN / REGIONAL NEWS
+  // ===============================================================
+  { group: "Egypt & Regional", name: "Extra News", handle: "ExtraNews", id: null, rtl: true },
+  { group: "Egypt & Regional", name: "القاهرة الإخبارية (Cairo News)", handle: "CairoNews", id: null, rtl: true },
+  { group: "Egypt & Regional", name: "صدى البلد (Sada El Balad)", handle: "SadaElbalad", id: null, rtl: true },
+  { group: "Egypt & Regional", name: "اليوم السابع (Youm7)", handle: "youm7", id: null, rtl: true },
+
+  // ===============================================================
+  // DOCUMENTARIES — ENGLISH
+  // ===============================================================
+  { group: "Documentaries", name: "DW Documentary", handle: "dwdocumentary", id: null },
+  { group: "Documentaries", name: "FRONTLINE PBS", handle: "frontlinepbs", id: null },
+  { group: "Documentaries", name: "PBS Documentaries", handle: "PBSDocumentaries", id: null },
+  { group: "Documentaries", name: "NOVA PBS", handle: "novapbs", id: null },
+  { group: "Documentaries", name: "BBC Earth", handle: "BBCEarth", id: null },
+  { group: "Documentaries", name: "National Geographic", handle: "NatGeo", id: null },
+  { group: "Documentaries", name: "VICE", handle: "VICE", id: null },
+  { group: "Documentaries", name: "Real Stories", handle: "RealStories", id: null },
+  { group: "Documentaries", name: "Free Documentary", handle: "FreeDocumentary", id: null },
+  { group: "Documentaries", name: "Vox", handle: "Vox", id: null },
+  { group: "Documentaries", name: "Timeline", handle: "TimelineChannel", id: null },
+  { group: "Documentaries", name: "History Hit", handle: "HistoryHit", id: null },
+  { group: "Documentaries", name: "Smithsonian Channel", handle: "SmithsonianChannel", id: null },
+  { group: "Documentaries", name: "National Film Board of Canada", handle: "NFB", id: null },
+  { group: "Documentaries", name: "US National Archives", handle: "USNationalArchives", id: null },
+  { group: "Documentaries", name: "SLICE", handle: "SLICE", id: null },
+
+  // ===============================================================
+  // DOCUMENTARIES — ARABIC
+  // ===============================================================
+  { group: "Arabic Documentaries", name: "الجزيرة الوثائقية", handle: "aljazeeradocumentary", id: null, rtl: true },
+  { group: "Arabic Documentaries", name: "وثائقية دي دبليو (DW Documentary Arabic)", handle: "dwdocarabia", id: "UCET6sWl4Xcu-U8Ka9PJPrwA", rtl: true },
+  { group: "Arabic Documentaries", name: "الشرق ديسكفري (Asharq Documentary)", handle: "AsharqDoc", id: null, rtl: true },
+  { group: "Arabic Documentaries", name: "National Geographic أبوظبي", handle: "natgeoabudhabime", id: null, rtl: true },
+  { group: "Arabic Documentaries", name: "AlWathaeqya", handle: "AlWathaeqya", id: null, rtl: true },
+  { group: "Arabic Documentaries", name: "EF Network", handle: "EFNetwork", id: null, rtl: true },
+];
+
+const STORAGE_KEY = "newstv_custom_ids_v1";       // channel IDs (fallback / auto-follow)
+const VIDEO_STORAGE_KEY = "newstv_video_ids_v1";  // specific live video IDs (primary — matches YouTube's Share link)
+const META_KEY = "newstv_video_meta_v1";          // per-channel {checkedAt, live, error?} from auto-refresh
+const API_KEY_STORAGE = "newstv_yt_api_key";
+const LAST_FULL_REFRESH_KEY = "newstv_last_full_refresh";
+const QUOTA_RESET_KEY = "newstv_quota_reset_at";
+const REFRESH_TTL_MS = 15 * 60 * 1000;      // don't burn quota re-checking more often than every 15 min
+const ERROR_RETRY_TTL_MS = 3 * 60 * 1000;   // failed checks retry sooner than successful ones
+const VIDEOS_BATCH_SIZE = 50;               // videos.list accepts up to 50 ids per call
+
+// ---------------------------------------------------------------
+// Small in-memory-cached localStorage stores. Avoids re-parsing the
+// same JSON blob from localStorage on every single get() call — with
+// ~70 channels, render()/badge lookups were doing 3 parses per channel
+// per render before this.
+// ---------------------------------------------------------------
+function createStore(key){
+  let cache = null;
+  function load(){
+    if(cache) return cache;
+    try{ cache = JSON.parse(localStorage.getItem(key)) || {}; }catch(e){ cache = {}; }
+    return cache;
+  }
+  function save(obj){
+    cache = obj;
+    localStorage.setItem(key, JSON.stringify(obj));
+  }
+  return {
+    load, save,
+    get(k){ return load()[k]; },
+    set(k, v){ const obj = load(); obj[k] = v; save(obj); },
+    remove(k){ const obj = load(); delete obj[k]; save(obj); },
+  };
+}
+const customIdStore = createStore(STORAGE_KEY);
+const videoIdStore = createStore(VIDEO_STORAGE_KEY);
+const metaStore = createStore(META_KEY);
+
+function getApiKey(){ return (window.YOUTUBE_API_KEY && window.YOUTUBE_API_KEY.trim()) || localStorage.getItem(API_KEY_STORAGE) || ""; }
+function apiKeyFromConfig(){ return !!(window.YOUTUBE_API_KEY && window.YOUTUBE_API_KEY.trim()); }
+
+function getId(ch){ return ch.id || customIdStore.get(ch.handle) || null; }
+function getVideoId(ch){ return videoIdStore.get(ch.handle) || null; }
+function getMeta(ch){ return metaStore.get(ch.handle) || null; }
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function chunk(arr, size){
+  const out = [];
+  for(let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+// Accepts a full YouTube URL (watch, embed, share, youtu.be) or a bare 11-char video ID.
+function extractVideoId(input){
+  const s = input.trim();
+  if(/^[\w-]{11}$/.test(s)) return s;
+  const patterns = [
+    /[?&]v=([\w-]{11})/,
+    /youtu\.be\/([\w-]{11})/,
+    /embed\/([\w-]{11})/,
+  ];
+  for(const p of patterns){
+    const m = s.match(p);
+    if(m) return m[1];
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------
+// YouTube Data API v3.
+//
+// Quota-saving strategy (this is the expensive part of this app):
+// - search.list (find what's live on a channel) costs 100 units.
+// - videos.list (check specific video IDs) costs only 1 unit, no
+//   matter how many IDs you pass — up to 50 at once.
+// Once we know a channel's current live video ID, we keep re-checking
+// THAT id via videos.list (1 unit, batchable) instead of re-running
+// search.list (100 units) every time. search.list is only used to
+// discover a channel's live video the first time, or after a known
+// video has ended. For a ~70-channel list this turns a full refresh
+// from ~7,000 units (close to the 10,000/day free cap) into a
+// handful of units for anything already known, plus 100 units per
+// channel that actually needs (re)discovery.
+// ---------------------------------------------------------------
+let quotaExceeded = false;
+let apiKeyInvalid = false;
+
+function nextMidnightPacificMs(){
+  const now = new Date();
+  const la = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const nextMidnightLA = new Date(la.getFullYear(), la.getMonth(), la.getDate() + 1, 0, 0, 0, 0);
+  return now.getTime() + (nextMidnightLA - la);
+}
+
+function markQuotaExceeded(){
+  quotaExceeded = true;
+  localStorage.setItem(QUOTA_RESET_KEY, String(nextMidnightPacificMs()));
+}
+
+function isQuotaExceeded(){
+  if(quotaExceeded) return true;
+  const resetAt = Number(localStorage.getItem(QUOTA_RESET_KEY) || 0);
+  if(Date.now() < resetAt){ quotaExceeded = true; return true; }
+  return false;
+}
+
+function isApiKeyInvalid(){ return apiKeyInvalid; }
+
+// A bad/typo'd key fails every single request the same way a full-list refresh
+// would fail 70 times over — detect it once and short-circuit, same as quota.
+function isKeyInvalidError(error){
+  const reasons = (error.errors || []).map(e => e.reason);
+  return reasons.includes("keyInvalid") || reasons.includes("badRequest") || reasons.includes("API_KEY_INVALID");
+}
+
+async function ytApiGet(url){
+  try{
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.error){
+      if(data.error.code === 403) markQuotaExceeded();
+      else if(data.error.code === 400 && isKeyInvalidError(data.error)) apiKeyInvalid = true;
+      return null;
+    }
+    return data;
+  }catch(e){
+    return null;
+  }
+}
+
+async function resolveChannelId(ch){
+  const existing = getId(ch);
+  if(existing) return existing;
+  const key = getApiKey();
+  if(!key) return null;
+  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(ch.handle)}&key=${key}`);
+  if(!data) return null;
+  const id = data.items && data.items[0] && data.items[0].id;
+  if(id) customIdStore.set(ch.handle, id);
+  return id || null;
+}
+
+async function fetchLiveVideoId(channelId){
+  const key = getApiKey();
+  if(!key) return { videoId: null, live: false };
+  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${key}`);
+  if(!data) return { videoId: null, live: false, error: true };
+  const item = data.items && data.items[0];
+  return item ? { videoId: item.id.videoId, live: true } : { videoId: null, live: false };
+}
+
+// Cheap (1 unit total) re-check of up to 50 already-known video IDs at once.
+// Returns a map of videoId -> still live boolean, or null if the request itself failed.
+async function checkVideosStillLive(videoIds){
+  if(!videoIds.length) return {};
+  const key = getApiKey();
+  if(!key) return {};
+  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails&id=${videoIds.join(",")}&key=${key}`);
+  if(!data) return null;
+  const map = {};
+  videoIds.forEach(id => { map[id] = false; });
+  (data.items || []).forEach(item => {
+    const lsd = item.liveStreamingDetails;
+    map[item.id] = item.snippet.liveBroadcastContent === "live" || !!(lsd && !lsd.actualEndTime);
+  });
+  return map;
+}
+
+function isFresh(ch){
+  const meta = getMeta(ch);
+  if(!meta) return false;
+  const ttl = meta.error ? ERROR_RETRY_TTL_MS : REFRESH_TTL_MS;
+  return (Date.now() - meta.checkedAt) < ttl;
+}
+
+function setLive(ch){ metaStore.set(ch.handle, { checkedAt: Date.now(), live: true }); }
+function setOffline(ch){ metaStore.set(ch.handle, { checkedAt: Date.now(), live: false }); }
+function setError(ch){ metaStore.set(ch.handle, { checkedAt: Date.now(), live: false, error: true }); }
+
+// Checks a single channel, preferring the cheap videos.list re-check of its
+// last known live video before falling back to the expensive search.list discovery.
+async function refreshChannel(ch){
+  if(isQuotaExceeded() || isApiKeyInvalid()) return;
+
+  const cachedVideo = getVideoId(ch);
+  if(cachedVideo){
+    const liveMap = await checkVideosStillLive([cachedVideo]);
+    if(isQuotaExceeded() || isApiKeyInvalid()) return;
+    if(liveMap === null){ setError(ch); return; }
+    if(liveMap[cachedVideo]){ setLive(ch); return; }
+    // cached video has ended — fall through to rediscover via search.list
+  }
+
+  const channelId = await resolveChannelId(ch);
+  if(isQuotaExceeded() || isApiKeyInvalid()) return;
+  if(!channelId){ setError(ch); return; }
+
+  const result = await fetchLiveVideoId(channelId);
+  if(isQuotaExceeded() || isApiKeyInvalid()) return;
+  if(result.error){ setError(ch); return; }
+
+  if(result.live) setLive(ch); else setOffline(ch);
+  if(result.live && result.videoId) videoIdStore.set(ch.handle, result.videoId);
+}
+
+function setStatus(text){ document.getElementById("statusline").textContent = text; }
+
+async function refreshAll(force){
+  const key = getApiKey();
+  if(!key) return;
+  if(isQuotaExceeded()){
+    setStatus("Daily API quota reached — try again after it resets (midnight Pacific time).");
+    return;
+  }
+  if(isApiKeyInvalid()){
+    setStatus("Your YouTube API key looks invalid — check config.js or the 🔑 button.");
+    return;
+  }
+  const last = Number(localStorage.getItem(LAST_FULL_REFRESH_KEY) || 0);
+  if(!force && Date.now() - last < REFRESH_TTL_MS) return;
+
+  const fetchAllBtn = document.getElementById("fetchAllBtn");
+  fetchAllBtn.disabled = true;
+
+  // Phase 1: cheap bulk re-check of every channel with a known video ID —
+  // costs 1 unit per 50 channels, regardless of list size.
+  const withVideo = CHANNELS.filter(ch => getVideoId(ch));
+  for(const group of chunk(withVideo, VIDEOS_BATCH_SIZE)){
+    if(isQuotaExceeded() || isApiKeyInvalid()) break;
+    setStatus(`Rechecking ${group.length} known stream${group.length === 1 ? "" : "s"}…`);
+    const ids = group.map(getVideoId);
+    const liveMap = await checkVideosStillLive(ids);
+    if(liveMap === null) continue; // request failed; per-channel discovery below will retry
+    group.forEach(ch => {
+      const vid = getVideoId(ch);
+      if(liveMap[vid]) setLive(ch);
+      else {
+        // ended — drop the dead video AND its stale "live" meta, so the badge
+        // doesn't keep claiming live and Phase 2 below actually rediscovers it.
+        videoIdStore.remove(ch.handle);
+        metaStore.remove(ch.handle);
+      }
+      updateChannelRow(ch);
+    });
+  }
+
+  // Phase 2: full discovery (resolve handle + search.list) only for channels
+  // that are still stale — new channels, or ones whose video just ended.
+  const needsDiscovery = CHANNELS.filter(ch => !isFresh(ch));
+  for(let i = 0; i < needsDiscovery.length; i++){
+    if(isQuotaExceeded() || isApiKeyInvalid()) break;
+    const ch = needsDiscovery[i];
+    setStatus(`Checking ${i + 1}/${needsDiscovery.length}: ${ch.name}`);
+    await refreshChannel(ch);
+    updateChannelRow(ch);
+    await sleep(150); // gentle pacing, not a hammering loop
+  }
+
+  fetchAllBtn.disabled = false;
+  if(isQuotaExceeded()){
+    setStatus("Daily API quota reached — try again after it resets (midnight Pacific time).");
+  } else if(isApiKeyInvalid()){
+    setStatus("Your YouTube API key looks invalid — check config.js or the 🔑 button.");
+  } else {
+    localStorage.setItem(LAST_FULL_REFRESH_KEY, String(Date.now()));
+    setStatus("Channel list up to date.");
+    setTimeout(() => { if(document.getElementById("statusline").textContent === "Channel list up to date.") setStatus(""); }, 4000);
+  }
+}
+
+function promptApiKey(){
+  if(apiKeyFromConfig()){
+    alert(`Your API key is currently loaded from config.js, which takes priority over this prompt.\n\nTo change it, edit the YOUTUBE_API_KEY value in config.js directly (see the comment at the top of that file for setup instructions).`);
+    return;
+  }
+  const help =
+`Set your free YouTube Data API key:
+
+1. This will open Google Cloud Console's credentials page.
+2. Create a project if you don't have one (free, no card needed).
+3. Enable "YouTube Data API v3" for it.
+4. Create an API key and copy it.
+5. Paste it into the next prompt.
+
+Tip: instead of this prompt, you can also create a config.js file
+next to index.html — see config.js for the one-line format. That
+way the key persists even if you clear your browser's localStorage.
+
+Click OK to open the credentials page now.`;
+  if(confirm(help)){
+    window.open("https://console.cloud.google.com/apis/credentials", "_blank", "noopener");
+  }
+  const key = prompt("Paste your YouTube Data API key:", getApiKey());
+  if(key === null) return;
+  if(key.trim()){
+    localStorage.setItem(API_KEY_STORAGE, key.trim());
+    refreshAll(true);
+  } else {
+    localStorage.removeItem(API_KEY_STORAGE);
+  }
+}
+
+// ---------------------------------------------------------------
+// Rendering. The nav is built once; per-channel state changes (live
+// status flipping, a video ID being set) update just that row in
+// place via updateChannelRow(), instead of tearing down and rebuilding
+// the whole list — which used to happen on every single channel during
+// "Fetch All" and reset the user's scroll position each time.
+// ---------------------------------------------------------------
+function getBadge(ch){
+  const meta = getMeta(ch);
+  const videoId = getVideoId(ch);
+  if(meta && meta.error) return { cls: "error", text: "error", title: "Last check failed — will retry automatically" };
+  if(meta && meta.live) return { cls: "live", text: "live", title: "" };
+  if(meta && !meta.live) return { cls: "offline", text: "not live", title: "" };
+  if(videoId) return { cls: "manual", text: "manual", title: "" };
+  if(getId(ch)) return { cls: "auto", text: "auto", title: "Auto-detect embed, not yet checked" };
+  return { cls: "", text: "not set", title: "" };
+}
+
+function cssEscapeHandle(handle){
+  return window.CSS && CSS.escape ? CSS.escape(handle) : handle.replace(/["\\]/g, "\\$&");
+}
+
+function findRow(ch){
+  return document.querySelector(`.channel[data-handle="${cssEscapeHandle(ch.handle)}"]`);
+}
+
+function updateChannelRow(ch){
+  const row = findRow(ch);
+  if(!row) return;
+  const badge = getBadge(ch);
+  const badgeEl = row.querySelector(".badge");
+  badgeEl.className = `badge${badge.cls ? " " + badge.cls : ""}`;
+  badgeEl.textContent = badge.text;
+  badgeEl.title = badge.title;
+  row.querySelector(".fixbtn").textContent = getVideoId(ch) ? "Update" : "Set Video";
+}
+
+function setActiveRow(ch){
+  document.querySelectorAll(".channel.active").forEach(r => r.classList.remove("active"));
+  const row = findRow(ch);
+  if(row) row.classList.add("active");
+}
+
+function render(){
+  const navList = document.getElementById("navList");
+  navList.innerHTML = "";
+  const groups = [...new Set(CHANNELS.map(c => c.group))];
+  const frag = document.createDocumentFragment();
+  groups.forEach(g => {
+    const h = document.createElement("div");
+    h.className = "group-title";
+    h.textContent = g;
+    frag.appendChild(h);
+    CHANNELS.filter(c => c.group === g).forEach(ch => {
+      const row = document.createElement("div");
+      row.className = "channel";
+      row.dataset.handle = ch.handle;
+      row.dataset.name = `${ch.name} ${ch.handle}`.toLowerCase();
+      if(ch.rtl) row.setAttribute("dir", "rtl");
+      const videoId = getVideoId(ch);
+      const badge = getBadge(ch);
+
+      row.innerHTML = `
+        <div class="name">${ch.name}<small>@${ch.handle}</small></div>
+        <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="badge${badge.cls ? " " + badge.cls : ""}" title="${badge.title}">${badge.text}</span>
+          <button class="fixbtn">${videoId ? "Update" : "Set Video"}</button>
+        </span>
+      `;
+      row.addEventListener("click", (e) => {
+        if(e.target.closest(".fixbtn")) return; // handled separately
+        playChannel(ch);
+      });
+      row.querySelector(".fixbtn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        setVideoId(ch);
+      });
+      frag.appendChild(row);
+    });
+  });
+  navList.appendChild(frag);
+  applyChannelFilter();
+}
+
+function applyChannelFilter(){
+  const input = document.getElementById("channelSearch");
+  const q = input ? input.value.trim().toLowerCase() : "";
+  const navList = document.getElementById("navList");
+  let currentHeader = null;
+  let groupHasVisible = false;
+  let anyVisible = false;
+  navList.querySelectorAll(".group-title, .channel").forEach(el => {
+    if(el.classList.contains("group-title")){
+      if(currentHeader) currentHeader.hidden = !groupHasVisible;
+      currentHeader = el;
+      groupHasVisible = false;
+    } else {
+      const visible = !q || el.dataset.name.includes(q);
+      el.hidden = !visible;
+      if(visible){ groupHasVisible = true; anyVisible = true; }
+    }
+  });
+  if(currentHeader) currentHeader.hidden = !groupHasVisible;
+  let noResults = document.getElementById("noResults");
+  if(q && !anyVisible){
+    if(!noResults){
+      noResults = document.createElement("div");
+      noResults.id = "noResults";
+      noResults.className = "no-results";
+      navList.appendChild(noResults);
+    }
+    noResults.textContent = `No channels match "${input.value.trim()}".`;
+  } else if(noResults){
+    noResults.remove();
+  }
+}
+
+function setVideoId(ch){
+  const help =
+`Get "${ch.name}"'s current live video link (10 seconds):
+
+1. This will open the channel's live page on YouTube.
+2. Under the video, click "Share" → "Copy link".
+3. Paste that link into the next prompt (or just the video ID).
+
+Click OK to open the channel's live page now.`;
+  if(confirm(help)){
+    window.open(`https://www.youtube.com/@${ch.handle}/live`, "_blank", "noopener");
+  }
+  const raw = prompt(`Paste the Share link (or video ID) for "${ch.name}":`);
+  if(!raw) return;
+  const videoId = extractVideoId(raw);
+  if(videoId){
+    videoIdStore.set(ch.handle, videoId);
+    metaStore.remove(ch.handle); // manual override — drop any stale auto-checked status
+    updateChannelRow(ch);
+  } else {
+    alert("Couldn't find a valid video ID in that link. Nothing was saved.");
+  }
+}
+
+// ---------------------------------------------------------------
+// YouTube IFrame Player API (per Google's docs: developers.google.com/youtube/iframe_api_reference)
+//
+// IMPORTANT: this page must be served over http(s), not opened as a
+// file:// URL. YouTube's embed player now requires an HTTP Referer
+// header (see "Error 153" in the API's revision history, July 2025);
+// file:// pages never send one, so every channel would fail to load
+// no matter what. Run a tiny local server from this folder, e.g.:
+//   python3 -m http.server 8000
+// then open http://localhost:8000 in your browser.
+// ---------------------------------------------------------------
+let ytApiPromise = null;
+function loadYtApi(){
+  if(ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve) => {
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => resolve();
+  });
+  return ytApiPromise;
+}
+
+const ERROR_MESSAGES = {
+  2:   "Invalid channel/video ID.",
+  5:   "This stream can't be played in this player (HTML5 error).",
+  100: "That channel or video couldn't be found.",
+  101: "The broadcaster has disabled playback in embedded players.",
+  150: "The broadcaster has disabled playback in embedded players.",
+  153: "YouTube rejected the request (missing Referer header). Make sure you're opening this page via http://localhost, not by double-clicking the file.",
+};
+
+let currentPlayer = null;
+
+async function playChannel(ch){
+  setActiveRow(ch);
+  closeMobileNav();
+
+  const videoId = getVideoId(ch);
+  const channelId = getId(ch);
+  const wrap = document.getElementById("playerWrap");
+  const toolbar = document.getElementById("toolbar");
+  const openLink = document.getElementById("openYoutube");
+  const nowPlaying = document.getElementById("nowPlaying");
+  const statusline = document.getElementById("statusline");
+  const liveUrl = `https://www.youtube.com/@${ch.handle}/live`;
+
+  if(location.protocol === "file:"){
+    wrap.innerHTML = `<div class="empty">
+      This page was opened as a local file, which YouTube's player will reject (missing Referer header → Error 153).<br><br>
+      Run a tiny local server from this folder instead, e.g.:<br><br>
+      <code style="background:#000;padding:4px 8px;border-radius:4px">python3 -m http.server 8000</code><br><br>
+      then open <code style="background:#000;padding:4px 8px;border-radius:4px">http://localhost:8000</code> in your browser.
+    </div>`;
+    toolbar.style.display = "none";
+    return;
+  }
+
+  // Default behavior: check-on-click, not fetch-all-on-startup. Only hits the
+  // API for the channel you actually clicked, and only if it hasn't been
+  // checked recently (respects the same 15-min cache as "Fetch All"), and
+  // never if today's quota is already known to be exhausted.
+  if(getApiKey() && !isQuotaExceeded() && !isApiKeyInvalid() && !isFresh(ch)){
+    wrap.innerHTML = `<div class="empty">Checking whether "${ch.name}" is live…</div>`;
+    toolbar.style.display = "none";
+    statusline.textContent = `Checking: ${ch.name}`;
+    await refreshChannel(ch);
+    updateChannelRow(ch);
+    statusline.textContent = "";
+  }
+
+  const freshVideoId = getVideoId(ch);
+  const freshChannelId = getId(ch);
+
+  if(!freshVideoId && !freshChannelId){
+    const meta = getMeta(ch);
+    const reason = meta && meta.error
+      ? `The last automatic check for "${ch.name}" failed (network issue or the channel handle couldn't be resolved).`
+      : isApiKeyInvalid()
+        ? `Your YouTube API key looks invalid, so "${ch.name}" couldn't be auto-checked.`
+        : isQuotaExceeded()
+          ? `Today's YouTube API quota is used up, so "${ch.name}" couldn't be auto-checked.`
+          : `No video set for "${ch.name}" yet.`;
+    wrap.innerHTML = `<div class="empty">${reason}<br><br>Click "Set Video" next to it in the list — grab the Share link from its live page on YouTube (one-time, 10 seconds)${getApiKey() ? ", or wait and try auto-detect again" : ""}.</div>`;
+    toolbar.style.display = "none";
+    return;
+  }
+
+  // We already know from a recent check that this channel isn't live and we
+  // don't have a specific saved video — don't bother trying the auto-detect
+  // embed (YouTube just shows a generic/confusing error for it); tell the
+  // user plainly instead so they can retry later or set a video manually.
+  const freshMeta = getMeta(ch);
+  if(!freshVideoId && freshMeta && freshMeta.live === false){
+    wrap.innerHTML = `<div class="empty">"${ch.name}" isn't currently live.<br><br>
+      It'll be auto-rechecked the next time you click it or use "Fetch All". You can also
+      <a href="${liveUrl}" target="_blank" rel="noopener" style="color:var(--accent)">check its channel on YouTube</a>
+      or click "Set Video" next to it if you have a specific stream link.</div>`;
+    toolbar.style.display = "none";
+    return;
+  }
+
+  // Prefer a specific video ID (matches YouTube's own Share link — most reliable,
+  // works even when a channel disables the "auto-detect live" embed feature).
+  // Fall back to the channel auto-detect embed only if no video ID has been set yet.
+  const embedSrc = freshVideoId
+    ? `https://www.youtube.com/embed/${freshVideoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`
+    : `https://www.youtube.com/embed/live_stream?channel=${freshChannelId}&autoplay=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+
+  toolbar.style.display = "flex";
+  nowPlaying.textContent = "Loading: " + ch.name;
+  openLink.href = liveUrl;
+
+  // Build the underlying <iframe> ourselves (per the API docs' "existing iframe" example),
+  // then wrap it with YT.Player so we get real onReady/onError callbacks.
+  wrap.innerHTML = `<iframe
+      id="ytplayer"
+      src="${embedSrc}"
+      frameborder="0"
+      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>
+    <div class="hint" id="playerHint">Loading “${ch.name}”…</div>`;
+
+  loadYtApi().then(() => {
+    if(currentPlayer && currentPlayer.destroy){
+      try{ currentPlayer.destroy(); }catch(e){}
+    }
+    currentPlayer = new YT.Player("ytplayer", {
+      events: {
+        onReady: () => {
+          nowPlaying.textContent = "Now playing: " + ch.name;
+          const hint = document.getElementById("playerHint");
+          if(hint) hint.classList.add("fade");
+        },
+        onError: (e) => {
+          const msg = ERROR_MESSAGES[e.data] || `Playback error (code ${e.data}).`;
+          const suggestion = freshVideoId
+            ? `This video may have ended. Click "Update" next to ${ch.name} in the list to grab a fresh Share link.`
+            : `Try clicking "Set Video" next to ${ch.name} and pasting its Share link instead — that usually works even when this doesn't.`;
+          wrap.innerHTML = `<div class="empty">
+            <strong>${ch.name}</strong><br><br>${msg}<br><br>${suggestion}<br><br>
+            <a href="${liveUrl}" target="_blank" rel="noopener" style="color:var(--accent)">Open on YouTube ↗</a>
+          </div>`;
+        }
+      }
+    });
+  });
+}
+
+render();
+
+// Group headers stick just below the search box (see .group-title CSS) —
+// measure its real rendered height instead of guessing a fixed offset.
+(function setGroupStickyOffset(){
+  const navsearch = document.querySelector(".navsearch");
+  if(navsearch) document.documentElement.style.setProperty("--navsearch-h", navsearch.offsetHeight + "px");
+})();
+
+// Sidebar collapse/expand — on mobile this is a full overlay drawer with a
+// backdrop instead of pushing the player over, and closes itself once a
+// channel is picked (see closeMobileNav(), called from playChannel).
+const MOBILE_BREAKPOINT = 720;
+let setNavCollapsed = () => {};
+let closeMobileNav = () => {};
+(function setupNavToggle(){
+  const nav = document.getElementById("nav");
+  const btn = document.getElementById("navToggle");
+  const mobileBtn = document.getElementById("navToggleMobile");
+  const backdrop = document.getElementById("navBackdrop");
+  const COLLAPSE_KEY = "newstv_nav_collapsed";
+  const isMobile = () => window.innerWidth <= MOBILE_BREAKPOINT;
+
+  function applyState(collapsed){
+    nav.classList.toggle("collapsed", collapsed);
+    btn.classList.toggle("collapsed", collapsed);
+    const title = collapsed ? "Show channel list" : "Hide channel list";
+    btn.title = title;
+    mobileBtn.title = title;
+    backdrop.classList.toggle("show", isMobile() && !collapsed);
+  }
+
+  const stored = localStorage.getItem(COLLAPSE_KEY);
+  // First-ever visit on a phone: default to collapsed so the player is visible immediately.
+  applyState(stored !== null ? stored === "1" : isMobile());
+
+  setNavCollapsed = (collapsed) => {
+    applyState(collapsed);
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
+  };
+  closeMobileNav = () => { if(isMobile()) setNavCollapsed(true); };
+
+  function toggle(){ setNavCollapsed(!nav.classList.contains("collapsed")); }
+  btn.addEventListener("click", toggle);
+  mobileBtn.addEventListener("click", toggle);
+  backdrop.addEventListener("click", () => setNavCollapsed(true));
+})();
+
+document.getElementById("channelSearch").addEventListener("input", applyChannelFilter);
+document.getElementById("apiKeyBtn").addEventListener("click", promptApiKey);
+document.getElementById("fetchAllBtn").addEventListener("click", () => refreshAll(true));
+
+if(isQuotaExceeded()){
+  setStatus("Daily API quota reached — try again after it resets (midnight Pacific time).");
+}
+
+// No auto-refresh on load — default behavior is check-on-click (see playChannel).
+// Use the "⟳ Fetch All" button when you want the whole list's live status at once.
+
+// Warn immediately on load if opened as a local file, before the user even picks a channel.
+(function checkProtocol(){
+  const msg = document.getElementById("startupMsg");
+  if(!msg) return;
+  if(location.protocol === "file:"){
+    msg.innerHTML = `⚠️ This page was opened directly from disk (file://).<br><br>
+      YouTube's player rejects that (missing Referer header → Error 153), so no channel will load until you serve it over http.<br><br>
+      From this folder, run:<br><br>
+      <code style="background:#000;padding:4px 8px;border-radius:4px">python3 -m http.server 8000</code><br><br>
+      then open <code style="background:#000;padding:4px 8px;border-radius:4px">http://localhost:8000</code> in your browser.`;
+  } else if(apiKeyFromConfig()){
+    msg.innerHTML = `Pick a channel on the left to start watching.<br><br>
+      API key loaded from config.js — live status is checked automatically the first time you click each channel.`;
+  } else {
+    msg.innerHTML = `Pick a channel on the left to start watching.<br><br>
+      Set a free YouTube API key (🔑 button above, or via config.js) to auto-detect live streams, or click "Set Video" next to a channel to set one manually.`;
+  }
+})();
+
+</script>
+</body>
+</html>
