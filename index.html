@@ -95,6 +95,60 @@
     .fixbtn{padding:6px 10px;font-size:12px}
     .toolbar{flex-wrap:wrap;row-gap:6px}
   }
+
+  /* ===== Liveuamap Explorer ("World Map" tab) ============================
+     Uses only the existing :root design tokens — no new visual language. */
+  .tabs{display:flex;gap:6px;padding:8px 20px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0}
+  .tab{background:none;border:1px solid var(--border);color:var(--muted);font:inherit;font-size:13px;
+    padding:6px 14px;border-radius:6px;cursor:pointer}
+  .tab:hover{color:var(--text);border-color:var(--accent)}
+  .tab.active{color:var(--text);background:var(--active);border-color:var(--accent)}
+
+  #liveuamapView{display:flex;flex:1;min-height:0}
+  .lu-side{width:300px;background:var(--panel);border-right:1px solid var(--border);flex-shrink:0;
+    display:flex;flex-direction:column;min-height:0}
+  .lu-searchbox{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .lu-searchbox input{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:8px 10px;border-radius:6px;font-size:13px}
+  .lu-searchbox input:focus{outline:none;border-color:var(--accent)}
+  .lu-scroll{overflow-y:auto;flex:1;min-height:0}
+  .lu-section{padding:12px 12px 4px}
+  .lu-section-title{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px}
+  .lu-hint{font-size:12px;color:var(--muted);line-height:1.5;padding:0 4px 8px}
+  .lu-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .lu-chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border);
+    color:var(--text);font:inherit;font-size:12px;padding:5px 10px;border-radius:14px;cursor:pointer}
+  .lu-chip:hover{border-color:var(--accent)}
+  .lu-chip.active{background:var(--active);border-color:var(--accent)}
+  .lu-chip-x{color:var(--muted);font-size:14px;line-height:1;padding:0 2px;border-radius:8px}
+  .lu-chip-x:hover{color:var(--text)}
+  .lu-results{padding:4px 0}
+  .lu-result{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent}
+  .lu-result:hover,.lu-result.hl{background:var(--panel2)}
+  .lu-result.hl{border-left-color:var(--accent)}
+  .lu-result.active{background:var(--active)}
+  .lu-result-flag{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+  .lu-result-name{font-size:14px}
+
+  .lu-mapwrap{flex:1;display:flex;flex-direction:column;min-width:0;background:#000}
+  .lu-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);
+    border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+  .lu-current{color:var(--text)}
+  .lu-bar-spacer{flex:1}
+  .lu-pin.on{color:#f0b429;border-color:#f0b429}
+  .lu-frame{flex:1;position:relative;min-height:0}
+  .lu-iframe{width:100%;height:100%;border:0;display:block;background:#000}
+  .lu-loading{position:absolute;inset:0}
+  .lu-fallback strong{color:var(--text);font-size:15px}
+  .lu-fallback-msg{margin:12px 0;color:var(--muted);max-width:420px}
+  .lu-fallback-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+  @media (max-width:720px){
+    .tabs{padding:8px 12px}
+    #liveuamapView{flex-direction:column}
+    .lu-side{width:auto;border-right:none;border-bottom:1px solid var(--border);max-height:45%}
+    .lu-bar{padding:8px 12px}
+  }
 </style>
 </head>
 <body>
@@ -113,7 +167,12 @@
   </div>
 </header>
 
-<div class="layout">
+<div class="tabs" role="tablist" aria-label="Views">
+  <button class="tab active" id="tabChannels" role="tab" aria-selected="true">📺 Channels</button>
+  <button class="tab" id="tabWorldMap" role="tab" aria-selected="false">🗺️ World Map</button>
+</div>
+
+<div class="layout" id="channelsView">
   <nav id="nav">
     <div class="navsearch"><input type="search" id="channelSearch" placeholder="Filter channels…" aria-label="Filter channels"></div>
     <div id="navList"></div>
@@ -133,10 +192,16 @@
   </main>
 </div>
 
+<section id="liveuamapView" hidden aria-label="World Map"></section>
+
 <!-- Optional local config file — not tracked/shared, holds your API key like a .env file would.
      If config.js doesn't exist, this just 404s quietly and the page falls back to the
      🔑 API Key prompt (stored in your browser's localStorage instead). -->
 <script src="config.js"></script>
+<!-- "World Map" tab: dataset + pure search + UI, loaded as plain scripts (like config.js). -->
+<script src="data/liveuamapCountries.js"></script>
+<script src="lib/liveuamapSearch.js"></script>
+<script src="lib/liveuamapExplorer.js"></script>
 
 <script>
 // ---------------------------------------------------------------
@@ -881,6 +946,47 @@ let closeMobileNav = () => {};
 document.getElementById("channelSearch").addEventListener("input", applyChannelFilter);
 document.getElementById("apiKeyBtn").addEventListener("click", promptApiKey);
 document.getElementById("fetchAllBtn").addEventListener("click", () => refreshAll(true));
+
+// ---------------------------------------------------------------
+// View switcher — "📺 Channels" vs "🗺️ World Map". The app had no tabs;
+// this just toggles [hidden] on the two view containers ([hidden] is
+// forced to display:none in the CSS, so it beats their flex display).
+// The World Map UI is built lazily on first open (see lib/liveuamapExplorer.js).
+// ---------------------------------------------------------------
+(function setupViewTabs(){
+  const VIEW_KEY = "newstv_liveuamap_view";
+  const tabChannels = document.getElementById("tabChannels");
+  const tabWorldMap = document.getElementById("tabWorldMap");
+  const channelsView = document.getElementById("channelsView");
+  const mapView = document.getElementById("liveuamapView");
+  // header controls that only make sense on the Channels view
+  const channelOnly = ["statusline", "fetchAllBtn", "apiKeyBtn", "navToggleMobile", "navToggle"]
+    .map(id => document.getElementById(id)).filter(Boolean);
+  let mapReady = false;
+
+  function setView(view){
+    const map = view === "map";
+    channelsView.hidden = map;
+    mapView.hidden = !map;
+    tabChannels.classList.toggle("active", !map);
+    tabWorldMap.classList.toggle("active", map);
+    tabChannels.setAttribute("aria-selected", String(!map));
+    tabWorldMap.setAttribute("aria-selected", String(map));
+    channelOnly.forEach(el => { el.hidden = map; });
+    if(map && !mapReady){
+      mapReady = true;
+      if(window.LiveuamapExplorer) LiveuamapExplorer.init(mapView);
+    }
+    try{ localStorage.setItem(VIEW_KEY, view); }catch(e){}
+  }
+
+  tabChannels.addEventListener("click", () => setView("channels"));
+  tabWorldMap.addEventListener("click", () => setView("map"));
+
+  let start = "channels";
+  try{ if(localStorage.getItem(VIEW_KEY) === "map") start = "map"; }catch(e){}
+  setView(start);
+})();
 
 if(isQuotaExceeded()){
   setStatus("Daily API quota reached — try again after it resets (midnight Pacific time).");
