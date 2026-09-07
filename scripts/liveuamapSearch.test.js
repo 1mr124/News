@@ -86,6 +86,17 @@ expectIncludes("haiti", "Caribbean");
 expectIncludes("north korea", "Korean Peninsula");
 expectIncludes("burma", "Myanmar");
 
+console.log("Non-country topic maps:");
+expectTop("isis", "ISIS");
+expectTop("داعش", "ISIS"); // arabicName
+expectTop("islamic state", "ISIS"); // alias
+expectTop("hezbollah", "Hezbollah");
+expectTop("حزب الله", "Hezbollah");
+expectTop("health", "Epidemics"); // slug != name
+expectTop("epidemic", "Epidemics");
+expectIncludes("kurdistan", "Kurds");
+expectIncludes("cartel", "Drug War");
+
 console.log("");
 console.log(pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

@@ -6,21 +6,29 @@
 //   - lib/liveuamapExplorer.js (the "World Map" tab UI)
 //   - scripts/verifyLiveuamapCountries.js (re-checks every subdomain)
 //
-// Each entry maps a country/region to its Liveuamap subdomain:
-//   { name, slug, aliases[], arabicName?, flag?, verified }
+// Each entry maps a country/region — or a non-country topic map (ISIS,
+// Hezbollah, Epidemics, …) — to its Liveuamap subdomain:
+//   { name, slug, aliases[], arabicName?, flag?, kind?, verified }
 //   -> https://<slug>.liveuamap.com/
 //
-// verified:
-//   Liveuamap only covers ~30+ regions/conflict zones, NOT every country.
-//   `verified: true` means the subdomain was confirmed to resolve to a real,
-//   distinct Liveuamap page (HTTP 200, final host *.liveuamap.com, has <title>).
-//   The list below was verified on 2026-09-07 with scripts/verifyLiveuamapCountries.js.
-//   Only `verified: true` entries are searchable/selectable in the UI, so an
-//   unverified slug can never produce a dead link.
+// kind:
+//   "country" (default when omitted) or "topic". Topics are non-geographic
+//   Liveuamap maps; the UI groups them under a "Topics" quick-pick but they
+//   are otherwise handled identically (same search, URL, pinning, language).
 //
-//   ==> When adding a country: append a one-line object with `verified: false`,
-//       then run `node scripts/verifyLiveuamapCountries.js` and only flip it to
-//       true if the script confirms it. No other file needs to change.
+// verified:
+//   Liveuamap only covers ~30+ regions/conflict zones + a set of topic maps,
+//   NOT every country. `verified: true` means the subdomain was confirmed to
+//   resolve to a real, distinct Liveuamap page (HTTP 200, final host
+//   *.liveuamap.com, has <title>). The list below was verified on 2026-09-07
+//   with scripts/verifyLiveuamapCountries.js. Only `verified: true` entries are
+//   searchable/selectable in the UI, so an unverified slug can never produce a
+//   dead link.
+//
+//   ==> When adding a country or topic: append a one-line object with
+//       `verified: false`, then run `node scripts/verifyLiveuamapCountries.js
+//       --all` and only flip it to true if the script confirms it. No other
+//       file needs to change.
 // ---------------------------------------------------------------
 (function (root, factory) {
   var data = factory();
@@ -77,5 +85,25 @@
     // silently failing. `verified: false` -> excluded from search/selection.
     { name: "Morocco", slug: "morocco", aliases: ["mar", "ma", "المغرب"], arabicName: "المغرب", flag: "🇲🇦", verified: false },
     { name: "Jordan", slug: "jordan", aliases: ["jor", "jo", "الأردن"], arabicName: "الأردن", flag: "🇯🇴", verified: false },
+
+    // --- Non-country topic maps ---------------------------------------
+    // Non-geographic Liveuamap maps. `kind: "topic"` groups them under the
+    // UI's "Topics" quick-pick; everything else works like a country.
+    // Slugs mirror liveuamap.com's own menu; run the verifier before trusting.
+    { name: "ISIS", slug: "isis", aliases: ["isil", "is", "islamic state", "daesh", "الدولة الإسلامية", "تنظيم الدولة"], arabicName: "داعش", flag: "🏴", kind: "topic", verified: true },
+    { name: "Hezbollah", slug: "hezbollah", aliases: ["hizballah", "hizbollah", "hizbullah", "حزب الله"], arabicName: "حزب الله", flag: "🟨", kind: "topic", verified: true },
+    { name: "Kurds", slug: "kurds", aliases: ["kurdish", "kurdistan", "ypg", "pkk", "sdf", "rojava", "الأكراد", "كردستان"], arabicName: "الأكراد", flag: "🟡", kind: "topic", verified: true },
+    { name: "Al-Qaeda", slug: "alqaeda", aliases: ["al qaeda", "alqaida", "aqap", "aqim", "القاعدة", "تنظيم القاعدة"], arabicName: "القاعدة", flag: "🏴", kind: "topic", verified: true },
+    { name: "Al-Shabaab", slug: "alshabab", aliases: ["al shabaab", "shabaab", "shabab", "حركة الشباب"], arabicName: "حركة الشباب", flag: "🏴", kind: "topic", verified: true },
+    { name: "Epidemics", slug: "health", aliases: ["health", "epidemic", "epidemics", "outbreak", "disease", "pandemic", "الأوبئة", "وباء", "صحة"], arabicName: "الأوبئة", flag: "🦠", kind: "topic", verified: true },
+    { name: "Cyberwar", slug: "cyberwar", aliases: ["cyber", "cyber war", "hacking", "الحرب السيبرانية", "الهجمات السيبرانية"], arabicName: "الحرب السيبرانية", flag: "💻", kind: "topic", verified: true },
+    { name: "Disasters", slug: "disasters", aliases: ["disaster", "natural disaster", "earthquake", "flood", "wildfire", "الكوارث"], arabicName: "الكوارث", flag: "🌪️", kind: "topic", verified: true },
+    { name: "Drug War", slug: "drugwar", aliases: ["drug war", "cartel", "cartels", "narco", "حرب المخدرات"], arabicName: "حرب المخدرات", flag: "💊", kind: "topic", verified: true },
+    { name: "Migration", slug: "migration", aliases: ["migrant", "migrants", "refugees", "الهجرة", "اللاجئون"], arabicName: "الهجرة", flag: "🧳", kind: "topic", verified: true },
+    { name: "Energy", slug: "energy", aliases: ["oil", "gas", "pipeline", "الطاقة", "النفط"], arabicName: "الطاقة", flag: "⚡", kind: "topic", verified: true },
+    { name: "Climate", slug: "climate", aliases: ["climate change", "global warming", "المناخ", "تغير المناخ"], arabicName: "المناخ", flag: "🌡️", kind: "topic", verified: true },
+    { name: "Piracy", slug: "pirates", aliases: ["pirate", "pirates", "piracy", "القرصنة"], arabicName: "القرصنة", flag: "🏴‍☠️", kind: "topic", verified: true },
+    { name: "Trade Wars", slug: "tradewars", aliases: ["trade war", "tariffs", "trade", "الحروب التجارية", "الرسوم الجمركية"], arabicName: "الحروب التجارية", flag: "📉", kind: "topic", verified: true },
+    { name: "Corruption", slug: "corruption", aliases: ["graft", "bribery", "الفساد", "الرشوة"], arabicName: "الفساد", flag: "💰", kind: "topic", verified: true },
   ];
 });

@@ -1,5 +1,6 @@
 // ---------------------------------------------------------------
-// Verify every Liveuamap subdomain in data/liveuamapCountries.js.
+// Verify every Liveuamap subdomain in data/liveuamapCountries.js
+// (countries/regions and non-country topic maps alike).
 //
 //   node scripts/verifyLiveuamapCountries.js          # check verified:true entries
 //   node scripts/verifyLiveuamapCountries.js --all     # check every entry
