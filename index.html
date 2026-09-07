@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Live News Channels</title>
+<title>News Monitor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -104,20 +104,39 @@
   .tab:hover{color:var(--text);border-color:var(--accent)}
   .tab.active{color:var(--text);background:var(--active);border-color:var(--accent)}
 
-  #liveuamapView{display:flex;flex:1;min-height:0}
+  #liveuamapView{display:flex;flex:1;min-height:0;overflow:hidden;position:relative}
   .lu-side{width:300px;background:var(--panel);border-right:1px solid var(--border);flex-shrink:0;
-    display:flex;flex-direction:column;min-height:0}
+    display:flex;flex-direction:column;min-height:0;
+    transition:width .28s cubic-bezier(.4,0,.2,1),opacity .2s ease}
+
+  /* Collapse toggle for the left panel — mirrors the Channels .navtoggle chevron
+     so the map can take the full width (desktop) / full viewport (mobile). */
+  .lu-toggle{
+    position:absolute;top:50%;left:300px;z-index:5;transform:translateY(-50%);
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:26px;height:44px;padding:0;
+    background:var(--panel2);border:1px solid var(--border);border-left:none;
+    border-radius:0 8px 8px 0;cursor:pointer;color:var(--muted);font:inherit;font-size:13px;
+    transition:left .28s cubic-bezier(.4,0,.2,1),background .15s,color .15s;
+  }
+  .lu-toggle:hover{background:var(--active);color:var(--text)}
+  .lu-toggle svg{width:14px;height:14px;flex-shrink:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+  .lu-toggle-label{display:none}
+  #liveuamapView.lu-collapsed .lu-side{width:0;opacity:0;border-right:none;overflow:hidden;pointer-events:none}
+  #liveuamapView.lu-collapsed .lu-toggle{left:0}
+  #liveuamapView.lu-collapsed .lu-toggle svg{transform:rotate(180deg)}
   .lu-searchbox{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
   .lu-searchbox input{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
     padding:8px 10px;border-radius:6px;font-size:13px}
   .lu-searchbox input:focus{outline:none;border-color:var(--accent)}
-  .lu-scroll{overflow-y:auto;flex:1;min-height:0}
+  .lu-scroll{overflow-y:auto;overflow-x:hidden;flex:1;min-height:0}
   .lu-section{padding:12px 12px 4px}
   .lu-section-title{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px}
   .lu-hint{font-size:12px;color:var(--muted);line-height:1.5;padding:0 4px 8px}
   .lu-chips{display:flex;flex-wrap:wrap;gap:6px}
   .lu-chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border);
-    color:var(--text);font:inherit;font-size:12px;padding:5px 10px;border-radius:14px;cursor:pointer}
+    color:var(--text);font:inherit;font-size:12px;padding:5px 10px;border-radius:14px;cursor:pointer;
+    max-width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere}
   .lu-chip:hover{border-color:var(--accent)}
   .lu-chip.active{background:var(--active);border-color:var(--accent)}
   .lu-chip-x{color:var(--muted);font-size:14px;line-height:1;padding:0 2px;border-radius:8px}
@@ -128,11 +147,11 @@
   .lu-result.hl{border-left-color:var(--accent)}
   .lu-result.active{background:var(--active)}
   .lu-result-flag{font-size:15px;flex-shrink:0;width:20px;text-align:center}
-  .lu-result-name{font-size:14px}
+  .lu-result-name{font-size:14px;min-width:0;overflow-wrap:anywhere}
 
-  .lu-mapwrap{flex:1;display:flex;flex-direction:column;min-width:0;background:#000}
+  .lu-mapwrap{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:#000}
   .lu-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);
-    border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+    border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap;min-width:0}
   .lu-current{color:var(--text)}
   .lu-bar-spacer{flex:1}
   .lu-lang{background:var(--panel);font-family:inherit;line-height:1.4}
@@ -145,11 +164,60 @@
   .lu-fallback-msg{margin:12px 0;color:var(--muted);max-width:420px}
   .lu-fallback-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 
-  @media (max-width:720px){
+  /* Liveuamap is search + chips + an embedded map, not a video grid — on small
+     screens it becomes one vertically-scrolling column (chips at natural height,
+     then a viewport-relative map) rather than the Channels drawer layout.
+     Breakpoint is 768px (not the Channels view's 720px) so tablet portrait gets
+     the stacked layout too; the two queries target different selectors. */
+  @media (max-width:768px){
     .tabs{padding:8px 12px}
-    #liveuamapView{flex-direction:column}
-    .lu-side{width:auto;border-right:none;border-bottom:1px solid var(--border);max-height:45%}
-    .lu-bar{padding:8px 12px}
+
+    #liveuamapView{flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+
+    .lu-side{width:auto;flex:0 0 auto;border-right:none;border-bottom:1px solid var(--border);
+      min-height:0;max-height:none}
+    .lu-scroll{overflow:visible;flex:0 0 auto}          /* the page scrolls, not this box */
+
+    /* Toggle becomes a full-width sticky "Hide list / Show list" bar above the
+       panel; collapsing drops the panel so the map fills the fixed-height view. */
+    .lu-toggle{
+      position:sticky;top:0;left:auto;order:-1;transform:none;
+      width:100%;height:auto;min-height:44px;
+      border:none;border-bottom:1px solid var(--border);border-radius:0;
+      background:var(--panel);z-index:6;
+    }
+    .lu-toggle-label{display:inline}
+    .lu-side{order:0}
+    .lu-mapwrap{order:1}
+    #liveuamapView.lu-collapsed .lu-side{display:none}
+    /* "Hide list" on mobile also drops the map's info bar (Currently viewing /
+       language / Reset / Open in new tab) so the embed fills the whole area under
+       the sticky "Show list" toggle. App header + tabs stay; desktop is unchanged. */
+    #liveuamapView.lu-collapsed .lu-bar{display:none}
+    #liveuamapView.lu-collapsed{overflow:hidden}
+    #liveuamapView.lu-collapsed .lu-mapwrap{flex:1 1 auto;min-height:0}
+    #liveuamapView.lu-collapsed .lu-frame{flex:1;height:auto;min-height:0}
+
+    .lu-searchbox input{padding:11px 12px;font-size:16px} /* 16px avoids iOS zoom-on-focus */
+    .lu-section{padding:14px 14px 6px}
+    .lu-chips{gap:8px}
+    .lu-chip{padding:9px 13px;font-size:13px;border-radius:16px;min-height:40px}
+    .lu-chip-x{font-size:18px;min-width:28px;min-height:28px;
+      display:inline-flex;align-items:center;justify-content:center;margin:-4px -6px -4px 0}
+    .lu-result{padding:13px 16px;gap:12px;min-height:48px}
+    .lu-result-name{font-size:15px}
+    .lu-results{max-height:55vh;overflow-y:auto}         /* a long match list can't bury the map */
+
+    .lu-bar{padding:10px 12px;gap:8px}
+    .lu-bar-spacer{display:none}
+    .lu-current{flex:1 1 100%}
+    .lu-bar .hdrbtn{padding:9px 12px;font-size:13px;min-height:40px}
+
+    .lu-mapwrap{flex:0 0 auto;min-height:0}
+    .lu-frame{height:70vh;min-height:360px;flex:0 0 auto}
+
+    .lu-fallback-actions{width:100%}
+    .lu-fallback-actions .hdrbtn{min-height:40px;padding:9px 12px}
   }
 </style>
 </head>
@@ -160,7 +228,7 @@
     <button class="navtoggle mobile" id="navToggleMobile" title="Toggle channel list" aria-label="Toggle channel list">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
     </button>
-    <h1>📺 Live News Channels</h1>
+    <h1>News Monitor</h1>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <small id="statusline"></small>
