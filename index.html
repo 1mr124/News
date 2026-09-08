@@ -104,7 +104,7 @@
   .tab:hover{color:var(--text);border-color:var(--accent)}
   .tab.active{color:var(--text);background:var(--active);border-color:var(--accent)}
 
-  #liveuamapView{display:flex;flex:1;min-height:0;overflow:hidden;position:relative}
+  #liveuamapView,#googleNewsView{display:flex;flex:1;min-height:0;overflow:hidden;position:relative}
   .lu-side{width:300px;background:var(--panel);border-right:1px solid var(--border);flex-shrink:0;
     display:flex;flex-direction:column;min-height:0;
     transition:width .28s cubic-bezier(.4,0,.2,1),opacity .2s ease}
@@ -122,9 +122,9 @@
   .lu-toggle:hover{background:var(--active);color:var(--text)}
   .lu-toggle svg{width:14px;height:14px;flex-shrink:0;transition:transform .28s cubic-bezier(.4,0,.2,1)}
   .lu-toggle-label{display:none}
-  #liveuamapView.lu-collapsed .lu-side{width:0;opacity:0;border-right:none;overflow:hidden;pointer-events:none}
-  #liveuamapView.lu-collapsed .lu-toggle{left:0}
-  #liveuamapView.lu-collapsed .lu-toggle svg{transform:rotate(180deg)}
+  #liveuamapView.lu-collapsed .lu-side,#googleNewsView.lu-collapsed .lu-side{width:0;opacity:0;border-right:none;overflow:hidden;pointer-events:none}
+  #liveuamapView.lu-collapsed .lu-toggle,#googleNewsView.lu-collapsed .lu-toggle{left:0}
+  #liveuamapView.lu-collapsed .lu-toggle svg,#googleNewsView.lu-collapsed .lu-toggle svg{transform:rotate(180deg)}
   .lu-searchbox{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
   .lu-searchbox input{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
     padding:8px 10px;border-radius:6px;font-size:13px}
@@ -164,6 +164,29 @@
   .lu-fallback-msg{margin:12px 0;color:var(--muted);max-width:420px}
   .lu-fallback-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 
+  /* Google News tab: the left-panel Language/Topic/custom-search fields, and
+     the "launch panel" that stands in for an embed (Google News blocks framing). */
+  .gn-field{margin-bottom:12px}
+  .gn-field:last-child{margin-bottom:0}
+  .gn-field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
+  .gn-select{width:100%;background:var(--panel);font-family:inherit;line-height:1.4}
+  .gn-select:hover{color:var(--text);border-color:var(--accent)}
+  .gn-query{width:100%;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:8px 10px;border-radius:6px;font-size:13px}
+  .gn-query:focus{outline:none;border-color:var(--accent)}
+  .gn-panel{flex-direction:column;gap:10px;max-width:560px;margin:0 auto}
+  .gn-panel-head{display:flex;align-items:center;gap:10px}
+  .gn-panel-head strong{color:var(--text);font-size:17px}
+  .gn-panel-flag{font-size:30px;line-height:1}
+  .gn-panel-sub{color:var(--muted);font-size:13px}
+  .gn-url{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--muted);
+    background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;
+    max-width:100%;overflow-wrap:anywhere;-webkit-user-select:all;user-select:all}
+  .gn-panel-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+  .gn-go{color:var(--text);border-color:var(--accent);padding:9px 16px;font-size:13px}
+  .gn-go:hover{background:var(--active)}
+  .gn-panel-note{color:var(--muted);font-size:12px}
+
   /* Liveuamap is search + chips + an embedded map, not a video grid — on small
      screens it becomes one vertically-scrolling column (chips at natural height,
      then a viewport-relative map) rather than the Channels drawer layout.
@@ -172,7 +195,7 @@
   @media (max-width:768px){
     .tabs{padding:8px 12px}
 
-    #liveuamapView{flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+    #liveuamapView,#googleNewsView{flex-direction:column;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 
     .lu-side{width:auto;flex:0 0 auto;border-right:none;border-bottom:1px solid var(--border);
       min-height:0;max-height:none}
@@ -189,16 +212,18 @@
     .lu-toggle-label{display:inline}
     .lu-side{order:0}
     .lu-mapwrap{order:1}
-    #liveuamapView.lu-collapsed .lu-side{display:none}
+    #liveuamapView.lu-collapsed .lu-side,#googleNewsView.lu-collapsed .lu-side{display:none}
     /* "Hide list" on mobile also drops the map's info bar (Currently viewing /
        language / Reset / Open in new tab) so the embed fills the whole area under
        the sticky "Show list" toggle. App header + tabs stay; desktop is unchanged. */
-    #liveuamapView.lu-collapsed .lu-bar{display:none}
-    #liveuamapView.lu-collapsed{overflow:hidden}
-    #liveuamapView.lu-collapsed .lu-mapwrap{flex:1 1 auto;min-height:0}
-    #liveuamapView.lu-collapsed .lu-frame{flex:1;height:auto;min-height:0}
+    #liveuamapView.lu-collapsed .lu-bar,#googleNewsView.lu-collapsed .lu-bar{display:none}
+    #liveuamapView.lu-collapsed,#googleNewsView.lu-collapsed{overflow:hidden}
+    #liveuamapView.lu-collapsed .lu-mapwrap,#googleNewsView.lu-collapsed .lu-mapwrap{flex:1 1 auto;min-height:0}
+    #liveuamapView.lu-collapsed .lu-frame,#googleNewsView.lu-collapsed .lu-frame{flex:1;height:auto;min-height:0}
 
     .lu-searchbox input{padding:11px 12px;font-size:16px} /* 16px avoids iOS zoom-on-focus */
+    .gn-query{padding:11px 12px;font-size:16px}
+    .gn-select{min-height:44px}
     .lu-section{padding:14px 14px 6px}
     .lu-chips{gap:8px}
     .lu-chip{padding:9px 13px;font-size:13px;border-radius:16px;min-height:40px}
@@ -240,6 +265,7 @@
 <div class="tabs" role="tablist" aria-label="Views">
   <button class="tab active" id="tabChannels" role="tab" aria-selected="true">📺 Channels</button>
   <button class="tab" id="tabWorldMap" role="tab" aria-selected="false">🗺️ World Map</button>
+  <button class="tab" id="tabGoogleNews" role="tab" aria-selected="false">📰 Google News</button>
 </div>
 
 <div class="layout" id="channelsView">
@@ -263,6 +289,7 @@
 </div>
 
 <section id="liveuamapView" hidden aria-label="World Map"></section>
+<section id="googleNewsView" hidden aria-label="Google News"></section>
 
 <!-- Optional local config file — not tracked/shared, holds your API key like a .env file would.
      If config.js doesn't exist, this just 404s quietly and the page falls back to the
@@ -272,6 +299,11 @@
 <script src="data/liveuamapCountries.js"></script>
 <script src="lib/liveuamapSearch.js"></script>
 <script src="lib/liveuamapExplorer.js"></script>
+<!-- "Google News" tab: dataset + pure URL builder + UI. Reuses lib/liveuamapSearch.js
+     (the country fuzzy-search) and lib/liveuamapExplorer.js (the World Map ↗ cross-link). -->
+<script src="data/googleNewsCountries.js"></script>
+<script src="lib/googleNewsUrl.js"></script>
+<script src="lib/googleNewsExplorer.js"></script>
 
 <script>
 // ---------------------------------------------------------------
@@ -1018,43 +1050,54 @@ document.getElementById("apiKeyBtn").addEventListener("click", promptApiKey);
 document.getElementById("fetchAllBtn").addEventListener("click", () => refreshAll(true));
 
 // ---------------------------------------------------------------
-// View switcher — "📺 Channels" vs "🗺️ World Map". The app had no tabs;
-// this just toggles [hidden] on the two view containers ([hidden] is
-// forced to display:none in the CSS, so it beats their flex display).
-// The World Map UI is built lazily on first open (see lib/liveuamapExplorer.js).
+// View switcher — "📺 Channels" / "🗺️ World Map" / "📰 Google News".
+// The app had no tabs; this just toggles [hidden] on the view containers
+// ([hidden] is forced to display:none in the CSS, so it beats their flex
+// display). Each non-Channels UI is built lazily on first open
+// (see lib/liveuamapExplorer.js, lib/googleNewsExplorer.js).
 // ---------------------------------------------------------------
 (function setupViewTabs(){
-  const VIEW_KEY = "newstv_liveuamap_view";
-  const tabChannels = document.getElementById("tabChannels");
-  const tabWorldMap = document.getElementById("tabWorldMap");
+  const VIEW_KEY = "newstv_liveuamap_view"; // kept for back-compat; now also "news"
   const channelsView = document.getElementById("channelsView");
   const mapView = document.getElementById("liveuamapView");
+  const newsView = document.getElementById("googleNewsView");
   // header controls that only make sense on the Channels view
   const channelOnly = ["statusline", "fetchAllBtn", "apiKeyBtn", "navToggleMobile", "navToggle"]
     .map(id => document.getElementById(id)).filter(Boolean);
-  let mapReady = false;
 
-  function setView(view){
-    const map = view === "map";
-    channelsView.hidden = map;
-    mapView.hidden = !map;
-    tabChannels.classList.toggle("active", !map);
-    tabWorldMap.classList.toggle("active", map);
-    tabChannels.setAttribute("aria-selected", String(!map));
-    tabWorldMap.setAttribute("aria-selected", String(map));
-    channelOnly.forEach(el => { el.hidden = map; });
-    if(map && !mapReady){
-      mapReady = true;
-      if(window.LiveuamapExplorer) LiveuamapExplorer.init(mapView);
+  const VIEWS = [
+    { key: "channels", tab: document.getElementById("tabChannels"),   el: channelsView },
+    { key: "map",      tab: document.getElementById("tabWorldMap"),   el: mapView,
+      init: () => window.LiveuamapExplorer  && LiveuamapExplorer.init(mapView) },
+    { key: "news",     tab: document.getElementById("tabGoogleNews"), el: newsView,
+      init: () => window.GoogleNewsExplorer && GoogleNewsExplorer.init(newsView) },
+  ];
+  const built = new Set();
+
+  function setView(key){
+    if(!VIEWS.some(v => v.key === key)) key = "channels";
+    VIEWS.forEach(v => {
+      const on = v.key === key;
+      v.el.hidden = !on;
+      v.tab.classList.toggle("active", on);
+      v.tab.setAttribute("aria-selected", String(on));
+    });
+    channelOnly.forEach(el => { el.hidden = key !== "channels"; });
+    const active = VIEWS.find(v => v.key === key);
+    if(active && active.init && !built.has(key)){
+      built.add(key);
+      active.init();
     }
-    try{ localStorage.setItem(VIEW_KEY, view); }catch(e){}
+    try{ localStorage.setItem(VIEW_KEY, key); }catch(e){}
   }
 
-  tabChannels.addEventListener("click", () => setView("channels"));
-  tabWorldMap.addEventListener("click", () => setView("map"));
+  VIEWS.forEach(v => v.tab.addEventListener("click", () => setView(v.key)));
 
   let start = "channels";
-  try{ if(localStorage.getItem(VIEW_KEY) === "map") start = "map"; }catch(e){}
+  try{
+    const saved = localStorage.getItem(VIEW_KEY);
+    if(VIEWS.some(v => v.key === saved)) start = saved;
+  }catch(e){}
   setView(start);
 })();
 
