@@ -28,6 +28,9 @@
   .badge.manual{background:#3a2f16;color:#f0b429}
   .badge.auto{background:#16283a;color:#60a5fa}
   .badge.error{background:#3a1616;color:#f87171}
+  .badge.blocked{background:#3a2f16;color:#f0b429}
+  .badge.soon{background:#16283a;color:#60a5fa}
+  .badge.recent{background:#23262d;color:#9aa0ab}
   .layout{display:flex;flex:1;min-height:0;position:relative}
   nav{width:300px;background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;
       transition:width .28s cubic-bezier(.4,0,.2,1),opacity .2s ease;position:relative}
@@ -71,9 +74,58 @@
   .hint a:hover{text-decoration:underline}
   .hint.fade{opacity:0;pointer-events:none}
   .empty{color:var(--muted);display:flex;align-items:center;justify-content:center;height:100%;font-size:14px;text-align:center;padding:40px}
-  .toolbar{padding:8px 14px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px}
+  .toolbar{padding:8px 14px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;font-size:13px;flex-shrink:0}
   .toolbar a{color:var(--accent);text-decoration:none}
   .toolbar a:hover{text-decoration:underline}
+  .toolbar-spacer{flex:1}
+  .linkbtn{background:none;border:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;padding:2px 4px;text-decoration:underline;text-underline-offset:2px}
+  .linkbtn:hover{color:var(--text)}
+
+  /* ===== Live-status strip + recent-videos grid + manual popover =========
+     Uses only the existing :root tokens — no new visual language. */
+  .livestrip{display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--panel);
+    border-bottom:1px solid var(--border);font-size:12.5px;color:var(--muted);flex-shrink:0}
+  .livestrip .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;
+    box-shadow:0 0 0 3px rgba(74,222,128,.18)}
+  .livestrip.live{color:#4ade80}
+  .livestrip.blocked{color:#f0b429}
+  .livestrip.blocked .dot{background:#f0b429;box-shadow:0 0 0 3px rgba(240,180,41,.18)}
+  .livestrip.soon{color:#60a5fa}
+  .livestrip.soon .dot{background:#60a5fa;box-shadow:none}
+  .livestrip.plain .dot{background:var(--muted);box-shadow:none}
+
+  /* When a recent grid is shown the main column scrolls and the player takes a
+     bounded (but still dominant) height instead of all remaining space. */
+  main#mainCol.has-recent{overflow-y:auto}
+  main#mainCol.has-recent .player-wrap{flex:0 0 auto;height:min(62vh,56.25vw);min-height:240px}
+  .recent-grid{display:grid;gap:10px;padding:12px 14px;background:var(--panel);
+    border-top:1px solid var(--border);
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .rv-card{display:flex;flex-direction:column;gap:6px;padding:0;background:var(--panel2);
+    border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer;
+    color:var(--text);font:inherit;text-align:left}
+  .rv-card:hover{border-color:var(--accent)}
+  .rv-card[aria-current="true"]{border-color:var(--accent);background:var(--active)}
+  .rv-thumb{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+  .rv-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .rv-tag{position:absolute;left:6px;top:6px;font-size:10px;padding:2px 6px;border-radius:10px;
+    background:rgba(20,20,24,.85);color:#4ade80}
+  .rv-title{font-size:12px;line-height:1.35;color:var(--text);padding:0 8px 9px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .recent-empty{color:var(--muted);font-size:13px;padding:16px 4px}
+
+  .mpop-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40}
+  .mpop{position:fixed;z-index:41;width:min(420px,calc(100vw - 32px));
+    background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+    padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px}
+  .mpop-title{font-size:14px;font-weight:600}
+  .mpop-sub{font-size:12px;color:var(--muted);margin-top:-4px}
+  .mpop input{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:9px 10px;border-radius:6px;font-size:13px}
+  .mpop input:focus{outline:none;border-color:var(--accent)}
+  .mpop-err{color:#f87171;font-size:12px}
+  .mpop-row{display:flex;align-items:center;gap:8px}
+
   ::-webkit-scrollbar{width:8px}
   ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
 
@@ -94,6 +146,11 @@
     .channel{padding:13px 16px}
     .fixbtn{padding:6px 10px;font-size:12px}
     .toolbar{flex-wrap:wrap;row-gap:6px}
+    .toolbar-spacer{flex-basis:100%;height:0}
+    main#mainCol.has-recent .player-wrap{height:min(52vh,56.25vw);min-height:200px}
+    .recent-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:10px}
+    .rv-title{font-size:11.5px}
+    .mpop input{padding:11px 12px;font-size:16px}   /* 16px avoids iOS zoom-on-focus */
   }
 
   /* ===== Liveuamap Explorer ("World Map" tab) ============================
@@ -277,16 +334,38 @@
   <button class="navtoggle" id="navToggle" title="Hide channel list" aria-label="Toggle channel list">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
   </button>
-  <main>
+  <main id="mainCol">
+    <div class="livestrip" id="liveStrip" hidden></div>
     <div class="player-wrap" id="playerWrap">
       <div class="empty" id="startupMsg">Checking how this page was opened…</div>
     </div>
     <div class="toolbar" id="toolbar" style="display:none">
       <span id="nowPlaying"></span>
       <a id="openYoutube" href="#" target="_blank" rel="noopener">Open on YouTube ↗</a>
+      <span class="toolbar-spacer"></span>
+      <button class="linkbtn" id="manualVideoBtn" type="button" title="Play a specific YouTube video for this channel">Manual video</button>
     </div>
+    <div class="recent-grid" id="recentGrid" hidden aria-label="Recent videos"></div>
   </main>
 </div>
+
+<!-- Unobtrusive manual-override popover. Replaces the old confirm()/prompt()
+     flow: paste a YouTube URL or a bare 11-char ID; "Clear override" resumes
+     automatic live detection. Stored in localStorage (newstv_video_ids_v1). -->
+<div class="mpop" id="manualPopover" hidden role="dialog" aria-modal="false" aria-labelledby="mpopTitle">
+  <div class="mpop-title" id="mpopTitle">Manual video</div>
+  <div class="mpop-sub" id="mpopSub"></div>
+  <input type="text" id="mpopInput" autocomplete="off" spellcheck="false"
+         placeholder="https://youtu.be/…  or  11-char video ID">
+  <div class="mpop-err" id="mpopErr" hidden></div>
+  <div class="mpop-row">
+    <button class="hdrbtn" id="mpopSave" type="button">Save</button>
+    <button class="hdrbtn" id="mpopClear" type="button">Clear override</button>
+    <span class="toolbar-spacer"></span>
+    <button class="hdrbtn" id="mpopCancel" type="button">Cancel</button>
+  </div>
+</div>
+<div class="mpop-backdrop" id="mpopBackdrop" hidden></div>
 
 <section id="liveuamapView" hidden aria-label="World Map"></section>
 <section id="googleNewsView" hidden aria-label="Google News"></section>
@@ -304,116 +383,130 @@
 <script src="data/googleNewsCountries.js"></script>
 <script src="lib/googleNewsUrl.js"></script>
 <script src="lib/googleNewsExplorer.js"></script>
+<!-- "📺 Channels" tab: pure YouTube discovery/classification logic (live vs
+     upcoming vs ended vs blocked, primary-video selection). Fetching stays in
+     the main script below; this module just decides. -->
+<script src="lib/youtubeChannel.js"></script>
 
 <script>
 // ---------------------------------------------------------------
 // CHANNEL LIST
-// id: confirmed YouTube channel ID (UC...) -> live embed works immediately
-// id: null -> needs a one-time manual fix (click "Set ID"), saved in localStorage
-// handle: used to build the "Open on YouTube" fallback link
+// id: the UC... ID of the channel that actually carries this outlet's live
+//     stream (verified via the YouTube Data API). Some outlets run their
+//     24/7 stream on a separate "… Live" channel, so `handle` + `id` may
+//     point at that sub-channel rather than the main brand channel.
+// id: null -> couldn't be confirmed; needs a one-time manual fix (click
+//     "Set Video" and paste the Share link from its live page on YouTube).
+// handle: used to build the "Open on YouTube" link (youtube.com/@handle/live).
 // ---------------------------------------------------------------
 const CHANNELS = [
   // ===============================================================
   // INTERNATIONAL / ENGLISH NEWS
   // ===============================================================
   { group: "International News", name: "Al Jazeera English | Live", handle: "aljazeeraenglish", id: "UCNye-wNBqNL5ZzHSJj3l8Bg" },
-  { group: "International News", name: "BBC News", handle: "BBCNews", id: null },
-  { group: "International News", name: "Reuters", handle: "Reuters", id: null },
-  { group: "International News", name: "Associated Press", handle: "AssociatedPress", id: null },
-  { group: "International News", name: "Sky News", handle: "SkyNews", id: null },
-  { group: "International News", name: "CNN", handle: "CNN", id: null },
-  { group: "International News", name: "ABC News", handle: "ABCNews", id: null },
-  { group: "International News", name: "ABC News Australia", handle: "abcnewsaustralia", id: null },
-  { group: "International News", name: "CBS News", handle: "CBSNews", id: null },
-  { group: "International News", name: "NBC News", handle: "NBCNews", id: null },
-  { group: "International News", name: "NBC News NOW", handle: "NBCNewsNOW", id: null },
-  { group: "International News", name: "PBS NewsHour", handle: "PBSNewsHour", id: null },
-  { group: "International News", name: "Bloomberg Television", handle: "BloombergTelevision", id: null },
-  { group: "International News", name: "CNBC", handle: "CNBC", id: null },
-  { group: "International News", name: "C-SPAN", handle: "CSPAN", id: null },
+  { group: "International News", name: "BBC News", handle: "bbcnews", id: "UC16niRr50-MSBwiO3YDb3RA" },
+  { group: "International News", name: "Reuters", handle: "reuters", id: "UChqUTb7kYRX8-EiaN3XFrSQ" },
+  { group: "International News", name: "Associated Press", handle: "associatedpress", id: "UC52X5wxOL_s5yw0dQk7NtgA" },
+  { group: "International News", name: "Sky News", handle: "skynews", id: "UCoMdktPbSTixAyNGwb-UYkQ" },
+  { group: "International News", name: "CNN", handle: "cnn", id: "UCupvZG-5ko_eiXAupbDfxWw" },
+  { group: "International News", name: "ABC News", handle: "abcnews", id: "UCBi2mrWuNuyYy4gbM6fU18Q" },
+  { group: "International News", name: "ABC News Australia", handle: "abcnewsaustralia", id: "UCVgO39Bk5sMo66-6o6Spn6Q" },
+  { group: "International News", name: "CBS News", handle: "cbsnews", id: "UC8p1vwvWtl6T73JiExfWs1g" },
+  { group: "International News", name: "NBC News", handle: "nbcnews", id: "UCeY0bbntWzzVIaj2z3QigXg" },
+  { group: "International News", name: "NBC News NOW", handle: "nbcnews", id: "UCeY0bbntWzzVIaj2z3QigXg" },
+  { group: "International News", name: "PBS NewsHour", handle: "pbsnewshour", id: "UC6ZFN9Tx6xh-skXCuRHCDpQ" },
+  { group: "International News", name: "Bloomberg Television", handle: "markets", id: "UCIALMKvObZNtJ6AmdCLP7Lg" },
+  { group: "International News", name: "CNBC", handle: "cnbc", id: "UCvJJ_dzjViJCoLf5uKUTwoA" },
+  { group: "International News", name: "C-SPAN", handle: "cspan", id: "UCb--64Gl51jIEVE-GLDAVTg" },
   { group: "International News", name: "DW News Live", handle: "dwnews", id: "UCknLrEdhRCp1aegoMqRaCZg" },
-  { group: "International News", name: "DW - en vivo", handle: "dwespanol", id: null },
+  { group: "International News", name: "DW - en vivo", handle: "dwespanol", id: "UCT4Jg8h03dD0iN3Pb5L0PMA" },
   { group: "International News", name: "Euronews English Live", handle: "euronews", id: "UCSrZ3UV4jOidv8ppoVuvW9Q" },
   { group: "International News", name: "France 24 English Live", handle: "france24_en", id: "UCQfwfsi5VrQ8yKZ-UWmAEFg" },
   { group: "International News", name: "TRT World", handle: "trtworld", id: "UC7fWeaHhqgM4Ry-RMpM2YYw" },
-  { group: "International News", name: "CNA 24/7 LIVE", handle: "channelnewsasia", id: null },
-  { group: "International News", name: "CGTN", handle: "CGTN", id: null },
-  { group: "International News", name: "WION", handle: "WION", id: null },
-  { group: "International News", name: "NHK WORLD-JAPAN", handle: "NHKWORLDJAPAN", id: null },
-  { group: "International News", name: "NDTV Profit Live TV", handle: "NDTVProfitIndia", id: "UC3uJIdRFTGgLWrUziaHbzrg" },
-  { group: "International News", name: "United Nations - LIVE", handle: "unitednations", id: null },
-  { group: "International News", name: "The Guardian", handle: "theguardian", id: null },
+  { group: "International News", name: "CNA 24/7 LIVE", handle: "channelnewsasia", id: "UC83jt4dlz1Gjl58fzQrrKZg" },
+  { group: "International News", name: "CGTN", handle: "cgtn", id: "UCgrNz-aDmcr2uuto8_DL2jg" },
+  { group: "International News", name: "WION", handle: "wion", id: "UC_gUM8rL-Lrg6O3adPW9K1g" },
+  { group: "International News", name: "NHK WORLD-JAPAN", handle: "nhkworldjapan", id: "UCSPEjw8F2nQDtmUKPFNF7_A" },
+  { group: "International News", name: "NDTV Profit Live TV", handle: "ndtvprofitindia", id: "UC3uJIdRFTGgLWrUziaHbzrg" },
+  { group: "International News", name: "United Nations - LIVE", handle: "unitednations", id: "UC5O114-PQNYkurlTg6hekZw" },
+  { group: "International News", name: "The Guardian", handle: "theguardian", id: "UCHpw8xwDNhU9gdohEcJu4aA" },
 
   // ===============================================================
   // ARABIC NEWS
   // ===============================================================
   { group: "Arabic News", name: "الجزيرة (Al Jazeera Arabic)", handle: "aljazeera", id: "UCfiwzLy-8yKzIbsmZTzxDgw", rtl: true },
-  { group: "Arabic News", name: "الجزيرة مباشر (Al Jazeera Mubasher)", handle: "aljazeeramubasher", id: null, rtl: true },
-  { group: "Arabic News", name: "العربية (Al Arabiya)", handle: "alarabiya", id: null, rtl: true },
-  { group: "Arabic News", name: "الحدث (Al Hadath)", handle: "AlHadath", id: null, rtl: true },
-  { group: "Arabic News", name: "سكاي نيوز عربية (Sky News Arabia)", handle: "SkyNewsArabia", id: null, rtl: true },
-  { group: "Arabic News", name: "BBC News عربي", handle: "bbcnewsarabic", id: null, rtl: true },
-  { group: "Arabic News", name: "الشرق للأخبار (Asharq News)", handle: "AsharqNews", id: null, rtl: true },
-  { group: "Arabic News", name: "العربي (Alaraby TV)", handle: "alarabytelevision", id: null, rtl: true },
+  { group: "Arabic News", name: "الجزيرة مباشر (Al Jazeera Mubasher)", handle: "aljazeeramubasher", id: "UCCv1Pd24oPErw5S7zJWltnQ", rtl: true },
+  { group: "Arabic News", name: "العربية (Al Arabiya)", handle: "alarabiya", id: "UCahpxixMCwoANAftn6IxkTg", rtl: true },
+  { group: "Arabic News", name: "الحدث (Al Hadath)", handle: "alhadath", id: "UCrj5BGAhtWxDfqbza9T9hqA", rtl: true },
+  { group: "Arabic News", name: "سكاي نيوز عربية (Sky News Arabia)", handle: "skynewsarabia", id: "UCIJXOvggjKtCagMfxvcCzAA", rtl: true },
+  { group: "Arabic News", name: "BBC News عربي", handle: "bbcnewsarabic", id: "UCelk6aHijZq-GJBBB9YpReA", rtl: true },
+  { group: "Arabic News", name: "الشرق للأخبار (Asharq News)", handle: "asharqnews", id: "UCRJUVYt9gjg8MnlGacySUdg", rtl: true },
+  { group: "Arabic News", name: "العربي (Alaraby TV)", handle: "alarabytv_news", id: "UC65i3Fyq91uiUkIS0i5GLNQ", rtl: true },
   { group: "Arabic News", name: "RT Arabic", handle: "RTArabic", id: null, rtl: true },
-  { group: "Arabic News", name: "الميادين (Al Mayadeen)", handle: "AlMayadeen", id: null, rtl: true },
-  { group: "Arabic News", name: "الحرة (Alhurra)", handle: "Alhurra", id: null, rtl: true },
-  { group: "Arabic News", name: "قناة المملكة (AlMamlaka)", handle: "AlMamlakaTV", id: null, rtl: true },
-  { group: "Arabic News", name: "النيل للأخبار (Nile News)", handle: "NileNews", id: null, rtl: true },
-  { group: "Arabic News", name: "الشرق الأوسط", handle: "aawsat", id: null, rtl: true },
-  { group: "Arabic News", name: "TRT عربي", handle: "trtarabi", id: null, rtl: true },
-  { group: "Arabic News", name: "فرانس 24 عربي (France 24 Arabic)", handle: "france24arabic", id: null, rtl: true },
-  { group: "Arabic News", name: "DW عربية (DW Arabic)", handle: "dwarabic", id: null, rtl: true },
-  { group: "Arabic News", name: "يورونيوز بالعربية (Euronews Arabic)", handle: "euronewsarabic", id: null, rtl: true },
+  { group: "Arabic News", name: "الميادين (Al Mayadeen)", handle: "almayadeentv", id: "UCZCFHCU-2eGF7V5ciMkoPHw", rtl: true },
+  { group: "Arabic News", name: "الحرة (Alhurra)", handle: "alhurra", id: "UCyscVWiJELkATSuU-RF2NLg", rtl: true },
+  { group: "Arabic News", name: "قناة المملكة (AlMamlaka)", handle: "almamlakatv", id: "UC0jiFAzTgl17k7awGbuoYew", rtl: true },
+  { group: "Arabic News", name: "النيل للأخبار (Nile News)", handle: "nilenewstvchannel", id: "UCqNEIF-M6df1pAth2pUVFdQ", rtl: true },
+  { group: "Arabic News", name: "الشرق الأوسط", handle: "aawsat", id: "UCIMti8J7qYjICcr_a39-ocg", rtl: true },
+  { group: "Arabic News", name: "TRT عربي", handle: "trtarabi", id: "UC5GvVahlgulCyo4cshSmbcg", rtl: true },
+  { group: "Arabic News", name: "فرانس 24 عربي (France 24 Arabic)", handle: "france24_ar", id: "UCdTyuXgmJkG_O8_75eqej-w", rtl: true },
+  { group: "Arabic News", name: "DW عربية (DW Arabic)", handle: "dwarabic", id: "UC30ditU5JI16o5NbFsHde_Q", rtl: true },
+  { group: "Arabic News", name: "يورونيوز بالعربية (Euronews Arabic)", handle: "euronewsar", id: "UCqr_xxiCUdqkDS1e4IIb0KA", rtl: true },
 
   // ===============================================================
   // EGYPTIAN / REGIONAL NEWS
   // ===============================================================
-  { group: "Egypt & Regional", name: "Extra News", handle: "ExtraNews", id: null, rtl: true },
-  { group: "Egypt & Regional", name: "القاهرة الإخبارية (Cairo News)", handle: "CairoNews", id: null, rtl: true },
-  { group: "Egypt & Regional", name: "صدى البلد (Sada El Balad)", handle: "SadaElbalad", id: null, rtl: true },
-  { group: "Egypt & Regional", name: "اليوم السابع (Youm7)", handle: "youm7", id: null, rtl: true },
+  { group: "Egypt & Regional", name: "Extra News", handle: "extranewsstream", id: "UC65F33K2cXk9hGDbOQYhTOw", rtl: true },
+  { group: "Egypt & Regional", name: "القاهرة الإخبارية (Cairo News)", handle: "alqaheranewslivestream", id: "UCcu3RolEOalAMef4Lt3uZLg", rtl: true },
+  { group: "Egypt & Regional", name: "صدى البلد (Sada El Balad)", handle: "baladtv", id: "UCJWuV-EkLmRrGZ4afwUBenw", rtl: true },
+  { group: "Egypt & Regional", name: "اليوم السابع (Youm7)", handle: "youm7", id: "UCbnJMCY2WSvvGdqWrOjo8oQ", rtl: true },
 
   // ===============================================================
   // DOCUMENTARIES — ENGLISH
   // ===============================================================
-  { group: "Documentaries", name: "DW Documentary", handle: "dwdocumentary", id: null },
-  { group: "Documentaries", name: "FRONTLINE PBS", handle: "frontlinepbs", id: null },
-  { group: "Documentaries", name: "PBS Documentaries", handle: "PBSDocumentaries", id: null },
-  { group: "Documentaries", name: "NOVA PBS", handle: "novapbs", id: null },
-  { group: "Documentaries", name: "BBC Earth", handle: "BBCEarth", id: null },
-  { group: "Documentaries", name: "National Geographic", handle: "NatGeo", id: null },
-  { group: "Documentaries", name: "VICE", handle: "VICE", id: null },
-  { group: "Documentaries", name: "Real Stories", handle: "RealStories", id: null },
-  { group: "Documentaries", name: "Free Documentary", handle: "FreeDocumentary", id: null },
-  { group: "Documentaries", name: "Vox", handle: "Vox", id: null },
-  { group: "Documentaries", name: "Timeline", handle: "TimelineChannel", id: null },
-  { group: "Documentaries", name: "History Hit", handle: "HistoryHit", id: null },
-  { group: "Documentaries", name: "Smithsonian Channel", handle: "SmithsonianChannel", id: null },
-  { group: "Documentaries", name: "National Film Board of Canada", handle: "NFB", id: null },
-  { group: "Documentaries", name: "US National Archives", handle: "USNationalArchives", id: null },
-  { group: "Documentaries", name: "SLICE", handle: "SLICE", id: null },
+  { group: "Documentaries", name: "DW Documentary", handle: "dwdocumentary", id: "UCW39zufHfsuGgpLviKh297Q" },
+  { group: "Documentaries", name: "FRONTLINE PBS", handle: "frontline", id: "UC3ScyryU9Oy9Wse3a8OAmYQ" },
+  { group: "Documentaries", name: "PBS Documentaries", handle: "pbsdocumentaries", id: "UCq6OAftTQOuUBRdtUDq5SUA" },
+  { group: "Documentaries", name: "NOVA PBS", handle: "novapbs", id: "UCjHz5SVHeMT0AViCYZvsGDA" },
+  { group: "Documentaries", name: "BBC Earth", handle: "bbcearth", id: "UCwmZiChSryoWQCZMIQezgTg" },
+  { group: "Documentaries", name: "National Geographic", handle: "natgeo", id: "UCpVm7bg6pXKo1Pr6k5kxG9A" },
+  { group: "Documentaries", name: "VICE", handle: "vice", id: "UCn8zNIfYAQNdrFRrr8oibKw" },
+  { group: "Documentaries", name: "Real Stories", handle: "realstories", id: "UCu4XcDBdnZkV6-5z2f16M0g" },
+  { group: "Documentaries", name: "Free Documentary", handle: "freedocumentary", id: "UCijcd0GR0fkxCAZwkiuWqtQ" },
+  { group: "Documentaries", name: "Vox", handle: "vox", id: "UCLXo7UDZvByw2ixzpQCufnA" },
+  { group: "Documentaries", name: "Timeline", handle: "timelinechannel", id: "UC88lvyJe7aHZmcvzvubDFRg" },
+  { group: "Documentaries", name: "History Hit", handle: "historyhit", id: "UCZwU2G-KVl-P-O-B35chZOQ" },
+  { group: "Documentaries", name: "Smithsonian Channel", handle: "smithsonianchannel", id: "UCWqPRUsJlZaDp-PVbqEch9g" },
+  { group: "Documentaries", name: "National Film Board of Canada", handle: "nfb", id: "UCeihXBww7ckKsKDF3JX13gA" },
+  { group: "Documentaries", name: "US National Archives", handle: "usnationalarchives", id: "UCnAsiniI4DF7vAAe7omWWFQ" },
+  { group: "Documentaries", name: "SLICE", handle: "slicedocumentary", id: "UCvziXdVCN7PMdFZEFZ6aEqQ" },
 
   // ===============================================================
   // DOCUMENTARIES — ARABIC
   // ===============================================================
-  { group: "Arabic Documentaries", name: "الجزيرة الوثائقية", handle: "aljazeeradocumentary", id: null, rtl: true },
+  { group: "Arabic Documentaries", name: "الجزيرة الوثائقية", handle: "aljazeeradocumentary", id: "UC0LSnqrwqtMwl2YwfUpO66g", rtl: true },
   { group: "Arabic Documentaries", name: "وثائقية دي دبليو (DW Documentary Arabic)", handle: "dwdocarabia", id: "UCET6sWl4Xcu-U8Ka9PJPrwA", rtl: true },
-  { group: "Arabic Documentaries", name: "الشرق ديسكفري (Asharq Documentary)", handle: "AsharqDoc", id: null, rtl: true },
-  { group: "Arabic Documentaries", name: "National Geographic أبوظبي", handle: "natgeoabudhabime", id: null, rtl: true },
-  { group: "Arabic Documentaries", name: "AlWathaeqya", handle: "AlWathaeqya", id: null, rtl: true },
-  { group: "Arabic Documentaries", name: "EF Network", handle: "EFNetwork", id: null, rtl: true },
+  { group: "Arabic Documentaries", name: "الشرق ديسكفري (Asharq Documentary)", handle: "asharqdoc", id: "UCArK7aSQ68vRCiJY2m7spkA", rtl: true },
+  { group: "Arabic Documentaries", name: "National Geographic أبوظبي", handle: "natgeoabudhabime", id: "UCLiTe0aOHShx7hXGyqZ9UIw", rtl: true },
+  { group: "Arabic Documentaries", name: "AlWathaeqya", handle: "alwathaeqya", id: "UCs1XyCCdk9q15Lec94zd5JQ", rtl: true },
+  { group: "Arabic Documentaries", name: "EF Network", handle: "efnetwork", id: "UC8UMer6lHgbnj6XCNQIL-Pw", rtl: true },
 ];
 
-const STORAGE_KEY = "newstv_custom_ids_v1";       // channel IDs (fallback / auto-follow)
-const VIDEO_STORAGE_KEY = "newstv_video_ids_v1";  // specific live video IDs (primary — matches YouTube's Share link)
-const META_KEY = "newstv_video_meta_v1";          // per-channel {checkedAt, live, error?} from auto-refresh
+const STORAGE_KEY = "newstv_custom_ids_v1";       // resolved UC… channel IDs (handle -> id cache)
+const VIDEO_STORAGE_KEY = "newstv_video_ids_v1";  // MANUAL overrides only (handle -> video id) — never auto-deleted
+const META_KEY = "newstv_video_meta_v1";          // per-channel auto-discovery result {checkedAt, state, liveVideoId?, primaryVideoId?, recent?, startsAt?, error?}
+const BLOCKED_KEY = "newstv_blocked_vids_v1";     // video ids that failed to embed (id -> reason) — skipped on future selection
+const REGION_KEY = "newstv_region";               // optional ISO-3166-1 alpha-2 hint for regionRestriction checks
 const API_KEY_STORAGE = "newstv_yt_api_key";
 const LAST_FULL_REFRESH_KEY = "newstv_last_full_refresh";
 const QUOTA_RESET_KEY = "newstv_quota_reset_at";
 const REFRESH_TTL_MS = 15 * 60 * 1000;      // don't burn quota re-checking more often than every 15 min
 const ERROR_RETRY_TTL_MS = 3 * 60 * 1000;   // failed checks retry sooner than successful ones
 const VIDEOS_BATCH_SIZE = 50;               // videos.list accepts up to 50 ids per call
+const UPLOADS_SCAN_MAX = 15;                // recent uploads pulled per channel for the cheap live check + grid
+const RECENT_GRID_MAX = 12;                 // cells shown in the recent-videos grid
+const VIDEO_PARTS = "snippet,liveStreamingDetails,status,contentDetails";
+const YTC = window.YouTubeChannel;          // pure discovery/classification logic (lib/youtubeChannel.js)
 
 // ---------------------------------------------------------------
 // Small in-memory-cached localStorage stores. Avoids re-parsing the
@@ -442,13 +535,22 @@ function createStore(key){
 const customIdStore = createStore(STORAGE_KEY);
 const videoIdStore = createStore(VIDEO_STORAGE_KEY);
 const metaStore = createStore(META_KEY);
+const blockedVideoStore = createStore(BLOCKED_KEY);
 
 function getApiKey(){ return (window.YOUTUBE_API_KEY && window.YOUTUBE_API_KEY.trim()) || localStorage.getItem(API_KEY_STORAGE) || ""; }
 function apiKeyFromConfig(){ return !!(window.YOUTUBE_API_KEY && window.YOUTUBE_API_KEY.trim()); }
 
 function getId(ch){ return ch.id || customIdStore.get(ch.handle) || null; }
-function getVideoId(ch){ return videoIdStore.get(ch.handle) || null; }
+// Manual override: a user-set localStorage entry wins; a `manualLiveVideo`
+// field in the CHANNELS config is the source-level fallback. null -> use auto.
+function getManualVideo(ch){
+  return videoIdStore.get(ch.handle) || (ch.manualLiveVideo ? String(ch.manualLiveVideo) : null);
+}
 function getMeta(ch){ return metaStore.get(ch.handle) || null; }
+function getRegion(){ try{ return (localStorage.getItem(REGION_KEY) || "").trim().toUpperCase() || null; }catch(e){ return null; } }
+function isBlocked(id){ return id ? !!blockedVideoStore.get(id) : false; }
+function markBlocked(id, reason){ if(id) blockedVideoStore.set(id, reason || "blocked"); }
+function clearBlockedFor(ids){ (ids || []).forEach(id => { if(id) blockedVideoStore.remove(id); }); }
 
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 function chunk(arr, size){
@@ -457,37 +559,25 @@ function chunk(arr, size){
   return out;
 }
 
-// Accepts a full YouTube URL (watch, embed, share, youtu.be) or a bare 11-char video ID.
-function extractVideoId(input){
-  const s = input.trim();
-  if(/^[\w-]{11}$/.test(s)) return s;
-  const patterns = [
-    /[?&]v=([\w-]{11})/,
-    /youtu\.be\/([\w-]{11})/,
-    /embed\/([\w-]{11})/,
-  ];
-  for(const p of patterns){
-    const m = s.match(p);
-    if(m) return m[1];
-  }
-  return null;
-}
+// Accepts a full YouTube URL (watch, embed, share, youtu.be, /live/, /shorts/)
+// or a bare 11-char video ID. Delegates to the pure module.
+function extractVideoId(input){ return YTC.extractVideoId(input); }
 
 // ---------------------------------------------------------------
 // YouTube Data API v3.
 //
 // Quota-saving strategy (this is the expensive part of this app):
-// - search.list (find what's live on a channel) costs 100 units.
-// - videos.list (check specific video IDs) costs only 1 unit, no
-//   matter how many IDs you pass — up to 50 at once.
-// Once we know a channel's current live video ID, we keep re-checking
-// THAT id via videos.list (1 unit, batchable) instead of re-running
-// search.list (100 units) every time. search.list is only used to
-// discover a channel's live video the first time, or after a known
-// video has ended. For a ~70-channel list this turns a full refresh
-// from ~7,000 units (close to the 10,000/day free cap) into a
-// handful of units for anything already known, plus 100 units per
-// channel that actually needs (re)discovery.
+//   channels.list?forHandle  -> resolve @handle to UC… id   (1 unit, cached forever)
+//   playlistItems.list       -> a channel's ~15 newest uploads (1 unit)
+//   videos.list              -> classify up to 50 ids at once (1 unit)
+//   search.list?eventType=live -> discover a live not yet in uploads (100 units)
+//
+// The live search index is eventually-consistent and regularly MISSES a
+// stream that is genuinely on air (seen with Sky News, CNN). So discovery
+// leans on the uploads playlist — an active live shows up there as the
+// newest item — and only falls back to the 100-unit search on a single
+// channel click when the cheap scan finds nothing live. A full ~70-channel
+// "Fetch All" is now ~2 units/channel (~150 total) instead of ~7,000.
 // ---------------------------------------------------------------
 let quotaExceeded = false;
 let apiKeyInvalid = false;
@@ -520,15 +610,26 @@ function isKeyInvalidError(error){
   return reasons.includes("keyInvalid") || reasons.includes("badRequest") || reasons.includes("API_KEY_INVALID");
 }
 
+// Only a genuine DAILY quota exhaustion should disable the app until midnight
+// Pacific. A short-term rate limit (HTTP 429, reason rateLimitExceeded /
+// userRateLimitExceeded) is transient — fail that request soft and move on,
+// otherwise one burst would silently kill discovery for the rest of the day.
+function isDailyQuotaError(error){
+  const reasons = (error.errors || []).map(e => e.reason);
+  return reasons.includes("quotaExceeded") || reasons.includes("dailyLimitExceeded");
+}
+
 async function ytApiGet(url){
   try{
     const res = await fetch(url);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if(data.error){
-      if(data.error.code === 403) markQuotaExceeded();
-      else if(data.error.code === 400 && isKeyInvalidError(data.error)) apiKeyInvalid = true;
-      return null;
+      const code = data.error.code;
+      if(code === 403 && isDailyQuotaError(data.error)) markQuotaExceeded();
+      else if(code === 400 && isKeyInvalidError(data.error)) apiKeyInvalid = true;
+      return null; // 429 / rate-limit / transient 5xx fall through here as a soft failure
     }
+    if(!res.ok) return null;
     return data;
   }catch(e){
     return null;
@@ -547,30 +648,47 @@ async function resolveChannelId(ch){
   return id || null;
 }
 
-async function fetchLiveVideoId(channelId){
+// --- raw API calls (each returns null on hard failure) ------------------
+
+// playlistItems on the channel's uploads playlist (UC… -> UU…). 1 unit.
+async function fetchUploadIds(channelId){
   const key = getApiKey();
-  if(!key) return { videoId: null, live: false };
-  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${key}`);
-  if(!data) return { videoId: null, live: false, error: true };
-  const item = data.items && data.items[0];
-  return item ? { videoId: item.id.videoId, live: true } : { videoId: null, live: false };
+  const plId = YTC.uploadsPlaylistId(channelId);
+  if(!key || !plId) return null;
+  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${plId}&maxResults=${UPLOADS_SCAN_MAX}&key=${key}`);
+  if(!data) return null;
+  return (data.items || []).map(it => it.contentDetails && it.contentDetails.videoId).filter(Boolean);
 }
 
-// Cheap (1 unit total) re-check of up to 50 already-known video IDs at once.
-// Returns a map of videoId -> still live boolean, or null if the request itself failed.
-async function checkVideosStillLive(videoIds){
-  if(!videoIds.length) return {};
+// search.list?eventType=live — the eventually-consistent live index. 100 units.
+// Used only as an on-demand backstop for a single channel, never in bulk.
+async function fetchLiveSearchIds(channelId){
+  const key = getApiKey();
+  if(!key) return null;
+  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelId}&eventType=live&type=video&order=date&maxResults=5&key=${key}`);
+  if(!data) return null;
+  return (data.items || []).map(it => it.id && it.id.videoId).filter(Boolean);
+}
+
+// videos.list -> classifyVideo() for each id (region-aware). 1 unit per 50 ids.
+// Returns { [id]: classified } or null if every batch request failed.
+async function classifyVideos(ids){
+  const uniq = [...new Set((ids || []).filter(Boolean))];
+  if(!uniq.length) return {};
   const key = getApiKey();
   if(!key) return {};
-  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/videos?part=snippet,liveStreamingDetails&id=${videoIds.join(",")}&key=${key}`);
-  if(!data) return null;
-  const map = {};
-  videoIds.forEach(id => { map[id] = false; });
-  (data.items || []).forEach(item => {
-    const lsd = item.liveStreamingDetails;
-    map[item.id] = item.snippet.liveBroadcastContent === "live" || !!(lsd && !lsd.actualEndTime);
-  });
-  return map;
+  const region = getRegion();
+  const out = {};
+  let anyOk = false;
+  for(const group of chunk(uniq, VIDEOS_BATCH_SIZE)){
+    const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/videos?part=${VIDEO_PARTS}&id=${group.join(",")}&key=${key}`);
+    if(!data){ continue; }
+    anyOk = true;
+    const byId = {};
+    (data.items || []).forEach(it => { byId[it.id] = it; });
+    group.forEach(id => { out[id] = YTC.classifyVideo(byId[id] || null, { region }); });
+  }
+  return anyOk ? out : null;
 }
 
 function isFresh(ch){
@@ -580,34 +698,101 @@ function isFresh(ch){
   return (Date.now() - meta.checkedAt) < ttl;
 }
 
-function setLive(ch){ metaStore.set(ch.handle, { checkedAt: Date.now(), live: true }); }
-function setOffline(ch){ metaStore.set(ch.handle, { checkedAt: Date.now(), live: false }); }
-function setError(ch){ metaStore.set(ch.handle, { checkedAt: Date.now(), live: false, error: true }); }
+function saveMeta(ch, patch){
+  metaStore.set(ch.handle, Object.assign({ checkedAt: Date.now() }, patch));
+}
+// Keep any cached recent[] on a transient failure so the card can still fall
+// back to recent videos instead of going blank.
+function saveErrorMeta(ch){
+  const prev = getMeta(ch) || {};
+  metaStore.set(ch.handle, {
+    checkedAt: Date.now(), state: "error", error: true,
+    recent: prev.recent || [], primaryVideoId: prev.primaryVideoId || null, liveVideoId: null,
+  });
+}
 
-// Checks a single channel, preferring the cheap videos.list re-check of its
-// last known live video before falling back to the expensive search.list discovery.
-async function refreshChannel(ch){
-  if(isQuotaExceeded() || isApiKeyInvalid()) return;
+// The discovery hierarchy for one channel. Persists the result to metaStore
+// and returns it. `allowSearch` enables the 100-unit live-search backstop
+// (single-channel clicks only — never bulk "Fetch All").
+async function discoverChannel(ch, opts){
+  opts = opts || {};
+  if(isQuotaExceeded() || isApiKeyInvalid()) return getMeta(ch);
 
-  const cachedVideo = getVideoId(ch);
-  if(cachedVideo){
-    const liveMap = await checkVideosStillLive([cachedVideo]);
-    if(isQuotaExceeded() || isApiKeyInvalid()) return;
-    if(liveMap === null){ setError(ch); return; }
-    if(liveMap[cachedVideo]){ setLive(ch); return; }
-    // cached video has ended — fall through to rediscover via search.list
+  const manual = getManualVideo(ch);
+  const channelId = await resolveChannelId(ch);
+  if(isQuotaExceeded() || isApiKeyInvalid()) return getMeta(ch);
+
+  // Gather candidate ids: manual override + recent uploads (+ live search backstop).
+  let uploadIds = null;
+  if(channelId) uploadIds = await fetchUploadIds(channelId);
+  if(isQuotaExceeded() || isApiKeyInvalid()) return getMeta(ch);
+
+  if(!manual && !channelId && uploadIds === null){
+    saveErrorMeta(ch);
+    return getMeta(ch);
   }
 
-  const channelId = await resolveChannelId(ch);
-  if(isQuotaExceeded() || isApiKeyInvalid()) return;
-  if(!channelId){ setError(ch); return; }
+  let candidateIds = [];
+  if(manual) candidateIds.push(manual);
+  if(Array.isArray(uploadIds)) candidateIds = candidateIds.concat(uploadIds);
 
-  const result = await fetchLiveVideoId(channelId);
-  if(isQuotaExceeded() || isApiKeyInvalid()) return;
-  if(result.error){ setError(ch); return; }
+  let classified = await classifyVideos(candidateIds);
+  if(isQuotaExceeded() || isApiKeyInvalid()) return getMeta(ch);
+  if(classified === null){ saveErrorMeta(ch); return getMeta(ch); }
 
-  if(result.live) setLive(ch); else setOffline(ch);
-  if(result.live && result.videoId) videoIdStore.set(ch.handle, result.videoId);
+  const haveLiveOrUpcoming = Object.keys(classified).some(id => {
+    const c = classified[id]; return c && (c.state === "live" || c.state === "upcoming");
+  });
+
+  // Backstop: the uploads scan found nothing live/upcoming — try the pricey
+  // live-search index once (it sometimes has a stream the playlist doesn't).
+  if(opts.allowSearch && !haveLiveOrUpcoming && channelId && ch.liveBehavior !== "recent"
+     && !isQuotaExceeded() && !isApiKeyInvalid()){
+    const liveIds = await fetchLiveSearchIds(channelId);
+    if(Array.isArray(liveIds) && liveIds.length){
+      const extra = await classifyVideos(liveIds);
+      if(extra) classified = Object.assign({}, classified, extra);
+      candidateIds = candidateIds.concat(liveIds);
+    }
+  }
+
+  // Fresh discovery run — give any previously session-blocked candidate another
+  // chance (the stream may have changed). onError re-blocks instantly if still bad.
+  clearBlockedFor(candidateIds);
+
+  const classifiedList = candidateIds
+    .filter((id, i) => candidateIds.indexOf(id) === i)
+    .map(id => classified[id])
+    .filter(Boolean);
+
+  if(manual){
+    const mc = classified[manual];   // undefined if we couldn't classify (no key / API blip)
+    const recent = classifiedList
+      .filter(c => c.id !== manual && (c.state === "video" || c.state === "ended"))
+      .slice(0, RECENT_GRID_MAX)
+      .map(c => ({ id: c.id, title: c.title }));
+    const state = !mc ? "manual"
+                : mc.state === "unavailable" ? "manual_unavailable"
+                : mc.state === "live" ? "manual_live" : "manual";
+    saveMeta(ch, {
+      source: "manual", state,
+      primaryVideoId: manual,
+      liveVideoId: mc && mc.state === "live" ? manual : null,
+      recent,
+    });
+    return getMeta(ch);
+  }
+
+  const picked = YTC.pickPrimary(classifiedList);
+  saveMeta(ch, {
+    source: "auto",
+    state: picked.state,
+    primaryVideoId: picked.primaryVideoId,
+    liveVideoId: picked.liveVideoId,
+    startsAt: picked.startsAt || null,
+    recent: (picked.recent || []).slice(0, RECENT_GRID_MAX),
+  });
+  return getMeta(ch);
 }
 
 function setStatus(text){ document.getElementById("statusline").textContent = text; }
@@ -629,38 +814,62 @@ async function refreshAll(force){
   const fetchAllBtn = document.getElementById("fetchAllBtn");
   fetchAllBtn.disabled = true;
 
-  // Phase 1: cheap bulk re-check of every channel with a known video ID —
-  // costs 1 unit per 50 channels, regardless of list size.
-  const withVideo = CHANNELS.filter(ch => getVideoId(ch));
-  for(const group of chunk(withVideo, VIDEOS_BATCH_SIZE)){
+  // Phase 1: one cheap bulk videos.list (1 unit / 50 ids) over every video id
+  // we already know — each channel's last known live/primary video plus every
+  // MANUAL override. Re-classify in place. Manual overrides are NEVER deleted
+  // here; a dead one just gets state "manual_unavailable" so the row can offer
+  // Update / Clear.
+  const known = [];
+  CHANNELS.forEach(ch => {
+    const meta = getMeta(ch);
+    [meta && meta.liveVideoId, meta && meta.primaryVideoId, getManualVideo(ch)]
+      .filter(Boolean).forEach(id => known.push({ ch, id, manual: id === getManualVideo(ch) }));
+  });
+  for(const group of chunk(known, VIDEOS_BATCH_SIZE)){
     if(isQuotaExceeded() || isApiKeyInvalid()) break;
-    setStatus(`Rechecking ${group.length} known stream${group.length === 1 ? "" : "s"}…`);
-    const ids = group.map(getVideoId);
-    const liveMap = await checkVideosStillLive(ids);
-    if(liveMap === null) continue; // request failed; per-channel discovery below will retry
-    group.forEach(ch => {
-      const vid = getVideoId(ch);
-      if(liveMap[vid]) setLive(ch);
-      else {
-        // ended — drop the dead video AND its stale "live" meta, so the badge
-        // doesn't keep claiming live and Phase 2 below actually rediscovers it.
-        videoIdStore.remove(ch.handle);
-        metaStore.remove(ch.handle);
+    setStatus(`Rechecking ${group.length} known video${group.length === 1 ? "" : "s"}…`);
+    const cls = await classifyVideos(group.map(g => g.id));
+    if(!cls) continue; // request failed; Phase 2 will retry these channels
+    const touched = new Set();
+    group.forEach(({ ch, id, manual }) => {
+      if(touched.has(ch.handle)) return;
+      const c = cls[id];
+      if(!c) return;
+      touched.add(ch.handle);
+      if(manual){
+        saveMeta(ch, Object.assign({}, getMeta(ch), {
+          source: "manual",
+          state: c.state === "unavailable" ? "manual_unavailable" : c.state === "live" ? "manual_live" : "manual",
+          primaryVideoId: id, liveVideoId: c.state === "live" ? id : null, error: false,
+        }));
+      } else if(c.state === "live" && c.embeddable && !c.regionBlocked){
+        saveMeta(ch, Object.assign({}, getMeta(ch), { state: "live", liveVideoId: id, primaryVideoId: id, error: false }));
+      } else if(c.state === "live"){
+        saveMeta(ch, Object.assign({}, getMeta(ch), {
+          state: c.regionBlocked ? "region_blocked" : "embed_disabled", liveVideoId: id, error: false,
+        }));
+      } else {
+        // The known live/primary ended — clear it so Phase 2 rediscovers.
+        const prev = getMeta(ch) || {};
+        if(prev.liveVideoId === id || prev.state === "live" || prev.state === "region_blocked" || prev.state === "embed_disabled"){
+          metaStore.remove(ch.handle);
+        }
       }
       updateChannelRow(ch);
     });
   }
 
-  // Phase 2: full discovery (resolve handle + search.list) only for channels
-  // that are still stale — new channels, or ones whose video just ended.
+  // Phase 2: cheap per-channel discovery (resolve handle + uploads scan +
+  // videos.list — ~2 units each, NO 100-unit live search) for channels that
+  // are still stale. New channels, or ones whose known video just ended.
   const needsDiscovery = CHANNELS.filter(ch => !isFresh(ch));
   for(let i = 0; i < needsDiscovery.length; i++){
     if(isQuotaExceeded() || isApiKeyInvalid()) break;
     const ch = needsDiscovery[i];
     setStatus(`Checking ${i + 1}/${needsDiscovery.length}: ${ch.name}`);
-    await refreshChannel(ch);
+    await discoverChannel(ch, { allowSearch: false });
     updateChannelRow(ch);
-    await sleep(150); // gentle pacing, not a hammering loop
+    await sleep(120); // gentle pacing, not a hammering loop
   }
 
   fetchAllBtn.disabled = false;
@@ -716,13 +925,32 @@ Click OK to open the credentials page now.`;
 // ---------------------------------------------------------------
 function getBadge(ch){
   const meta = getMeta(ch);
-  const videoId = getVideoId(ch);
-  if(meta && meta.error) return { cls: "error", text: "error", title: "Last check failed — will retry automatically" };
-  if(meta && meta.live) return { cls: "live", text: "live", title: "" };
-  if(meta && !meta.live) return { cls: "offline", text: "not live", title: "" };
-  if(videoId) return { cls: "manual", text: "manual", title: "" };
-  if(getId(ch)) return { cls: "auto", text: "auto", title: "Auto-detect embed, not yet checked" };
-  return { cls: "", text: "not set", title: "" };
+  const manual = getManualVideo(ch);
+  const st = meta && meta.state;
+  if(manual){
+    if(st === "manual_unavailable") return { cls: "error", text: "manual", title: "Saved video is unavailable — Update or Clear it" };
+    if(st === "manual_live" || st === "live") return { cls: "live", text: "manual", title: "Manual override — currently live" };
+    return { cls: "manual", text: "manual", title: "Manual override" };
+  }
+  if(!meta){
+    return getId(ch)
+      ? { cls: "auto", text: "auto", title: "Auto-detect, not checked yet" }
+      : { cls: "", text: "not set", title: "" };
+  }
+  switch(st){
+    case "live":           return { cls: "live",    text: "live",      title: "" };
+    case "region_blocked": return { cls: "blocked", text: "blocked",   title: "Live, but unavailable in your region — showing recent videos" };
+    case "embed_disabled": return { cls: "blocked", text: "blocked",   title: "Live, but embedding is disabled — showing recent videos" };
+    case "upcoming":       return { cls: "soon",    text: "soon",      title: "Upcoming live stream" };
+    case "offline":        return { cls: "recent",  text: "recent",    title: "Not live — showing recent videos" };
+    case "empty":          return { cls: "error",   text: "no videos", title: "No videos found for this channel" };
+    case "error":          return { cls: "error",   text: "error",     title: "Last check failed — will retry automatically" };
+  }
+  // legacy meta shape { live: bool }
+  if(meta.error) return { cls: "error", text: "error", title: "Last check failed — will retry automatically" };
+  if(meta.live === true) return { cls: "live", text: "live", title: "" };
+  if(meta.live === false) return { cls: "recent", text: "recent", title: "Not live — showing recent videos" };
+  return getId(ch) ? { cls: "auto", text: "auto", title: "" } : { cls: "", text: "not set", title: "" };
 }
 
 function cssEscapeHandle(handle){
@@ -741,7 +969,7 @@ function updateChannelRow(ch){
   badgeEl.className = `badge${badge.cls ? " " + badge.cls : ""}`;
   badgeEl.textContent = badge.text;
   badgeEl.title = badge.title;
-  row.querySelector(".fixbtn").textContent = getVideoId(ch) ? "Update" : "Set Video";
+  row.querySelector(".fixbtn").textContent = getManualVideo(ch) ? "Update" : "Set Video";
 }
 
 function setActiveRow(ch){
@@ -766,14 +994,14 @@ function render(){
       row.dataset.handle = ch.handle;
       row.dataset.name = `${ch.name} ${ch.handle}`.toLowerCase();
       if(ch.rtl) row.setAttribute("dir", "rtl");
-      const videoId = getVideoId(ch);
+      const hasManual = !!getManualVideo(ch);
       const badge = getBadge(ch);
 
       row.innerHTML = `
         <div class="name">${ch.name}<small>@${ch.handle}</small></div>
         <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
           <span class="badge${badge.cls ? " " + badge.cls : ""}" title="${badge.title}">${badge.text}</span>
-          <button class="fixbtn">${videoId ? "Update" : "Set Video"}</button>
+          <button class="fixbtn">${hasManual ? "Update" : "Set Video"}</button>
         </span>
       `;
       row.addEventListener("click", (e) => {
@@ -782,7 +1010,7 @@ function render(){
       });
       row.querySelector(".fixbtn").addEventListener("click", (e) => {
         e.stopPropagation();
-        setVideoId(ch);
+        openManualPopover(ch, e.currentTarget);
       });
       frag.appendChild(row);
     });
@@ -824,28 +1052,84 @@ function applyChannelFilter(){
   }
 }
 
-function setVideoId(ch){
-  const help =
-`Get "${ch.name}"'s current live video link (10 seconds):
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+function fmtTime(iso){
+  try{ const d = new Date(iso); return isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); }
+  catch(e){ return ""; }
+}
 
-1. This will open the channel's live page on YouTube.
-2. Under the video, click "Share" → "Copy link".
-3. Paste that link into the next prompt (or just the video ID).
-
-Click OK to open the channel's live page now.`;
-  if(confirm(help)){
-    window.open(`https://www.youtube.com/@${ch.handle}/live`, "_blank", "noopener");
+// ---------------------------------------------------------------
+// Manual-override popover. Unobtrusive: opened from a row's "Set Video" /
+// "Update" button or the toolbar "Manual video" link. Accepts a YouTube URL
+// or a bare 11-char id; "Clear override" removes it so auto-detect resumes.
+// Stored in videoIdStore (localStorage) — the project's existing mechanism.
+// ---------------------------------------------------------------
+let manualPopoverCh = null;
+function openManualPopover(ch, anchorEl){
+  manualPopoverCh = ch;
+  const pop = document.getElementById("manualPopover");
+  const backdrop = document.getElementById("mpopBackdrop");
+  const input = document.getElementById("mpopInput");
+  const err = document.getElementById("mpopErr");
+  const sub = document.getElementById("mpopSub");
+  const clearBtn = document.getElementById("mpopClear");
+  const existing = getManualVideo(ch);
+  sub.textContent = existing
+    ? `Currently overriding auto-detect for “${ch.name}”.`
+    : `Play a specific video for “${ch.name}”. This overrides automatic live detection.`;
+  input.value = existing || "";
+  err.hidden = true; err.textContent = "";
+  clearBtn.hidden = !existing;
+  pop.hidden = false; backdrop.hidden = false;
+  positionManualPopover(pop, anchorEl);
+  input.focus(); input.select();
+}
+function positionManualPopover(pop, anchorEl){
+  if(window.innerWidth <= 720 || !anchorEl){
+    pop.style.left = "50%"; pop.style.top = "50%"; pop.style.transform = "translate(-50%,-50%)";
+    return;
   }
-  const raw = prompt(`Paste the Share link (or video ID) for "${ch.name}":`);
-  if(!raw) return;
-  const videoId = extractVideoId(raw);
-  if(videoId){
-    videoIdStore.set(ch.handle, videoId);
-    metaStore.remove(ch.handle); // manual override — drop any stale auto-checked status
-    updateChannelRow(ch);
-  } else {
-    alert("Couldn't find a valid video ID in that link. Nothing was saved.");
+  pop.style.transform = "none";
+  const r = anchorEl.getBoundingClientRect();
+  const pw = Math.min(420, window.innerWidth - 32);
+  let left = Math.max(12, Math.min(r.left, window.innerWidth - pw - 12));
+  let top = r.bottom + 8;
+  const ph = pop.offsetHeight || 200;
+  if(top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 8);
+  pop.style.left = left + "px"; pop.style.top = top + "px";
+}
+function closeManualPopover(){
+  document.getElementById("manualPopover").hidden = true;
+  document.getElementById("mpopBackdrop").hidden = true;
+  manualPopoverCh = null;
+}
+function saveManualPopover(){
+  const ch = manualPopoverCh; if(!ch) return;
+  const err = document.getElementById("mpopErr");
+  const id = extractVideoId(document.getElementById("mpopInput").value || "");
+  if(!id){
+    err.textContent = "Couldn't find a YouTube video ID in that. Paste a full link (youtu.be/…, watch?v=…, /live/…) or the 11-character ID.";
+    err.hidden = false;
+    return;
   }
+  videoIdStore.set(ch.handle, id);
+  metaStore.remove(ch.handle);   // drop stale auto status — discovery re-runs on play
+  clearBlockedFor([id]);
+  updateChannelRow(ch);
+  closeManualPopover();
+  playChannel(ch);
+}
+function clearManualPopover(){
+  const ch = manualPopoverCh; if(!ch) return;
+  videoIdStore.remove(ch.handle);
+  metaStore.remove(ch.handle);   // auto-detect resumes on next play
+  updateChannelRow(ch);
+  closeManualPopover();
+  playChannel(ch);
 }
 
 // ---------------------------------------------------------------
@@ -875,25 +1159,169 @@ const ERROR_MESSAGES = {
   2:   "Invalid channel/video ID.",
   5:   "This stream can't be played in this player (HTML5 error).",
   100: "That channel or video couldn't be found.",
-  101: "The broadcaster has disabled playback in embedded players.",
-  150: "The broadcaster has disabled playback in embedded players.",
+  101: "This video can't be played here — embedding is disabled by the broadcaster, or it's unavailable in your region.",
+  150: "This video can't be played here — embedding is disabled by the broadcaster, or it's unavailable in your region.",
   153: "YouTube rejected the request (missing Referer header). Make sure you're opening this page via http://localhost, not by double-clicking the file.",
 };
 
 let currentPlayer = null;
+let currentChannel = null;   // channel in the main player — used by the toolbar "Manual video" link
+let playToken = 0;           // bumped on every playChannel() so stale async callbacks bail out
+
+const mainCol = () => document.getElementById("mainCol");
+const LIVE_STATES = { live: 1, manual_live: 1 };
+
+function setLiveStrip(state, ch, startsAt){
+  const strip = document.getElementById("liveStrip");
+  let cls = "plain", txt = `Latest from ${ch.name}`;
+  switch(state){
+    case "live": case "manual_live": cls = "live"; txt = "LIVE"; break;
+    case "region_blocked": cls = "blocked"; txt = "LIVE — unavailable in your region"; break;
+    case "embed_disabled": cls = "blocked"; txt = "LIVE — embedding disabled by the broadcaster"; break;
+    case "upcoming": cls = "soon"; txt = startsAt ? `Upcoming — starts ${fmtTime(startsAt)}` : "Upcoming live stream"; break;
+    case "manual": cls = "plain"; txt = "Manual video"; break;
+    case "manual_unavailable": cls = "blocked"; txt = "Saved manual video is unavailable"; break;
+  }
+  strip.className = `livestrip ${cls}`;
+  strip.innerHTML = `<span class="dot"></span><span></span>`;
+  strip.lastElementChild.textContent = txt;
+  strip.hidden = false;
+}
+
+function renderRecentGrid(ch, recent, activeId){
+  const grid = document.getElementById("recentGrid");
+  const list = (recent || []).filter(v => v && v.id).slice(0, RECENT_GRID_MAX);
+  grid.innerHTML = "";
+  if(!list.length){ grid.hidden = true; mainCol().classList.remove("has-recent"); return; }
+  list.forEach((v, i) => {
+    const b = document.createElement("button");
+    b.className = "rv-card";
+    b.type = "button";
+    if(v.id === activeId) b.setAttribute("aria-current", "true");
+    const thumb = document.createElement("div");
+    thumb.className = "rv-thumb";
+    const img = document.createElement("img");
+    img.loading = "lazy"; img.alt = "";
+    img.src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
+    thumb.appendChild(img);
+    if(i === 0){
+      const tag = document.createElement("span");
+      tag.className = "rv-tag";
+      tag.textContent = "● Latest";
+      thumb.appendChild(tag);
+    }
+    const t = document.createElement("div");
+    t.className = "rv-title";
+    t.textContent = v.title || "Recent video";
+    b.appendChild(thumb); b.appendChild(t);
+    b.addEventListener("click", () => {
+      grid.querySelectorAll(".rv-card").forEach(c => c.removeAttribute("aria-current"));
+      b.setAttribute("aria-current", "true");
+      mountPlayer(ch, v.id, "offline", { recent: list, token: playToken });
+    });
+    grid.appendChild(b);
+  });
+  grid.hidden = false;
+  mainCol().classList.add("has-recent");
+}
+
+function nextPlayable(ids, exclude){
+  return (ids || []).find(id => id && id !== exclude && !isBlocked(id)) || null;
+}
+
+function playerCard(ch, html){
+  const liveUrl = `https://www.youtube.com/@${ch.handle}/live`;
+  document.getElementById("playerWrap").innerHTML =
+    `<div class="empty"><strong>${escapeHtml(ch.name)}</strong><br><br>${html}<br><br>
+      <button class="hdrbtn" id="cardManualBtn" type="button">Set Live Video</button>
+      &nbsp;<a href="${liveUrl}" target="_blank" rel="noopener" style="color:var(--accent)">Open on YouTube ↗</a></div>`;
+  const b = document.getElementById("cardManualBtn");
+  if(b) b.addEventListener("click", () => openManualPopover(ch, b));
+  document.getElementById("toolbar").style.display = "flex";
+  document.getElementById("openYoutube").href = liveUrl;
+  document.getElementById("nowPlaying").textContent = ch.name;
+  document.getElementById("recentGrid").hidden = true;
+  document.getElementById("recentGrid").innerHTML = "";
+  mainCol().classList.remove("has-recent");
+  document.getElementById("liveStrip").hidden = true;
+}
+
+// Builds the <iframe> + YT.Player for one video and wires the fallback chain:
+// a failed embed is blocklisted and the next recent video is tried automatically.
+function mountPlayer(ch, videoId, state, ctx){
+  ctx = ctx || {};
+  const token = ctx.token != null ? ctx.token : playToken;
+  const recent = ctx.recent || [];
+  const recentIds = recent.map(v => v.id);
+  const wrap = document.getElementById("playerWrap");
+  const toolbar = document.getElementById("toolbar");
+  const nowPlaying = document.getElementById("nowPlaying");
+  const openLink = document.getElementById("openYoutube");
+  const liveUrl = `https://www.youtube.com/@${ch.handle}/live`;
+
+  if(!videoId){
+    const alt = nextPlayable(recentIds, null);
+    if(alt){ mountPlayer(ch, alt, state === "live" ? "offline" : state, { recent, token, startsAt: ctx.startsAt }); return; }
+    playerCard(ch, "Couldn't find a playable video for this channel right now. Try again later, or set one manually.");
+    return;
+  }
+
+  setLiveStrip(state, ch, ctx.startsAt);
+  toolbar.style.display = "flex";
+  nowPlaying.textContent = "Loading: " + ch.name;
+  openLink.href = LIVE_STATES[state] ? liveUrl : `https://www.youtube.com/watch?v=${videoId}`;
+
+  if(LIVE_STATES[state]) renderRecentGrid(ch, [], null);
+  else renderRecentGrid(ch, recent, videoId);
+
+  const embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+  wrap.innerHTML = `<iframe id="ytplayer" src="${embedSrc}" frameborder="0"
+      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <div class="hint" id="playerHint"></div>`;
+  const hint0 = document.getElementById("playerHint");
+  if(hint0) hint0.textContent = `Loading “${ch.name}”…`;
+
+  loadYtApi().then(() => {
+    if(token !== playToken) return;
+    if(currentPlayer && currentPlayer.destroy){ try{ currentPlayer.destroy(); }catch(e){} }
+    currentPlayer = new YT.Player("ytplayer", {
+      events: {
+        onReady: () => {
+          if(token !== playToken) return;
+          nowPlaying.textContent = "Now playing: " + ch.name;
+          const hint = document.getElementById("playerHint");
+          if(hint) hint.classList.add("fade");
+        },
+        onError: (e) => {
+          if(token !== playToken) return;
+          const code = e.data;
+          markBlocked(videoId, "err" + code);
+          // A discovered LIVE video that won't embed -> relabel and drop to recent.
+          let nextState = state;
+          if(LIVE_STATES[state]) nextState = (code === 101 || code === 150) ? "region_blocked" : "embed_disabled";
+          else if(nextState === "live") nextState = "offline";
+          const fallbackId = nextPlayable(recentIds, videoId);
+          if(fallbackId){
+            mountPlayer(ch, fallbackId, nextState, { recent, token, startsAt: ctx.startsAt });
+          } else {
+            const msg = ERROR_MESSAGES[code] || `Playback error (code ${code}).`;
+            playerCard(ch, `${msg}<br><br>No other recent video was available to fall back to.`);
+          }
+        }
+      }
+    });
+  });
+}
 
 async function playChannel(ch){
   setActiveRow(ch);
   closeMobileNav();
-
-  const videoId = getVideoId(ch);
-  const channelId = getId(ch);
+  currentChannel = ch;
+  const token = ++playToken;
   const wrap = document.getElementById("playerWrap");
   const toolbar = document.getElementById("toolbar");
-  const openLink = document.getElementById("openYoutube");
-  const nowPlaying = document.getElementById("nowPlaying");
   const statusline = document.getElementById("statusline");
-  const liveUrl = `https://www.youtube.com/@${ch.handle}/live`;
+  const strip = document.getElementById("liveStrip");
 
   if(location.protocol === "file:"){
     wrap.innerHTML = `<div class="empty">
@@ -903,98 +1331,87 @@ async function playChannel(ch){
       then open <code style="background:#000;padding:4px 8px;border-radius:4px">http://localhost:8000</code> in your browser.
     </div>`;
     toolbar.style.display = "none";
+    strip.hidden = true;
+    document.getElementById("recentGrid").hidden = true;
+    mainCol().classList.remove("has-recent");
     return;
   }
 
-  // Default behavior: check-on-click, not fetch-all-on-startup. Only hits the
-  // API for the channel you actually clicked, and only if it hasn't been
-  // checked recently (respects the same 15-min cache as "Fetch All"), and
-  // never if today's quota is already known to be exhausted.
-  if(getApiKey() && !isQuotaExceeded() && !isApiKeyInvalid() && !isFresh(ch)){
-    wrap.innerHTML = `<div class="empty">Checking whether "${ch.name}" is live…</div>`;
+  const canApi = !!getApiKey() && !isQuotaExceeded() && !isApiKeyInvalid();
+
+  // Check-on-click: only hit the API for the channel actually clicked, and only
+  // if its cached status is stale (same 15-min TTL as "Fetch All").
+  if(canApi && !isFresh(ch)){
+    wrap.innerHTML = `<div class="empty">Checking “${escapeHtml(ch.name)}” for a live stream…</div>`;
     toolbar.style.display = "none";
+    strip.hidden = true;
+    document.getElementById("recentGrid").hidden = true;
+    mainCol().classList.remove("has-recent");
     statusline.textContent = `Checking: ${ch.name}`;
-    await refreshChannel(ch);
+    await discoverChannel(ch, { allowSearch: true });
+    if(token !== playToken) return;      // user clicked another channel meanwhile
     updateChannelRow(ch);
     statusline.textContent = "";
   }
 
-  const freshVideoId = getVideoId(ch);
-  const freshChannelId = getId(ch);
+  const meta = getMeta(ch) || {};
+  const manual = getManualVideo(ch);
+  const recent = Array.isArray(meta.recent) ? meta.recent : [];
+  const recentIds = recent.map(v => v.id);
 
-  if(!freshVideoId && !freshChannelId){
-    const meta = getMeta(ch);
-    const reason = meta && meta.error
-      ? `The last automatic check for "${ch.name}" failed (network issue or the channel handle couldn't be resolved).`
-      : isApiKeyInvalid()
-        ? `Your YouTube API key looks invalid, so "${ch.name}" couldn't be auto-checked.`
-        : isQuotaExceeded()
-          ? `Today's YouTube API quota is used up, so "${ch.name}" couldn't be auto-checked.`
-          : `No video set for "${ch.name}" yet.`;
-    wrap.innerHTML = `<div class="empty">${reason}<br><br>Click "Set Video" next to it in the list — grab the Share link from its live page on YouTube (one-time, 10 seconds)${getApiKey() ? ", or wait and try auto-detect again" : ""}.</div>`;
-    toolbar.style.display = "none";
+  if(manual){
+    const st = meta.state === "manual_live" ? "manual_live"
+             : meta.state === "manual_unavailable" ? "manual_unavailable" : "manual";
+    mountPlayer(ch, manual, st, { recent, token, startsAt: meta.startsAt });
     return;
   }
 
-  // We already know from a recent check that this channel isn't live and we
-  // don't have a specific saved video — don't bother trying the auto-detect
-  // embed (YouTube just shows a generic/confusing error for it); tell the
-  // user plainly instead so they can retry later or set a video manually.
-  const freshMeta = getMeta(ch);
-  if(!freshVideoId && freshMeta && freshMeta.live === false){
-    wrap.innerHTML = `<div class="empty">"${ch.name}" isn't currently live.<br><br>
-      It'll be auto-rechecked the next time you click it or use "Fetch All". You can also
-      <a href="${liveUrl}" target="_blank" rel="noopener" style="color:var(--accent)">check its channel on YouTube</a>
-      or click "Set Video" next to it if you have a specific stream link.</div>`;
-    toolbar.style.display = "none";
+  if(!canApi && !meta.state){
+    playerCard(ch, getApiKey()
+      ? (isQuotaExceeded()
+          ? `Today's YouTube API quota is used up, so this channel couldn't be checked. Recent videos will load once it resets (midnight Pacific), or set a video manually.`
+          : `Your YouTube API key looks invalid, so this channel couldn't be checked. Fix it via the 🔑 button, or set a video manually.`)
+      : `Set a free YouTube API key (🔑 button) to auto-detect live streams and recent videos, or set a specific video manually.`);
     return;
   }
 
-  // Prefer a specific video ID (matches YouTube's own Share link — most reliable,
-  // works even when a channel disables the "auto-detect live" embed feature).
-  // Fall back to the channel auto-detect embed only if no video ID has been set yet.
-  const embedSrc = freshVideoId
-    ? `https://www.youtube.com/embed/${freshVideoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`
-    : `https://www.youtube.com/embed/live_stream?channel=${freshChannelId}&autoplay=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-
-  toolbar.style.display = "flex";
-  nowPlaying.textContent = "Loading: " + ch.name;
-  openLink.href = liveUrl;
-
-  // Build the underlying <iframe> ourselves (per the API docs' "existing iframe" example),
-  // then wrap it with YT.Player so we get real onReady/onError callbacks.
-  wrap.innerHTML = `<iframe
-      id="ytplayer"
-      src="${embedSrc}"
-      frameborder="0"
-      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen></iframe>
-    <div class="hint" id="playerHint">Loading “${ch.name}”…</div>`;
-
-  loadYtApi().then(() => {
-    if(currentPlayer && currentPlayer.destroy){
-      try{ currentPlayer.destroy(); }catch(e){}
+  switch(meta.state){
+    case "live": case "manual_live": {
+      const liveId = meta.liveVideoId || meta.primaryVideoId;
+      if(liveId && !isBlocked(liveId)){ mountPlayer(ch, liveId, "live", { recent, token }); return; }
+      // live id known-broken this session -> fall through to recent
+      mountPlayer(ch, nextPlayable(recentIds, null), "region_blocked", { recent, token });
+      return;
     }
-    currentPlayer = new YT.Player("ytplayer", {
-      events: {
-        onReady: () => {
-          nowPlaying.textContent = "Now playing: " + ch.name;
-          const hint = document.getElementById("playerHint");
-          if(hint) hint.classList.add("fade");
-        },
-        onError: (e) => {
-          const msg = ERROR_MESSAGES[e.data] || `Playback error (code ${e.data}).`;
-          const suggestion = freshVideoId
-            ? `This video may have ended. Click "Update" next to ${ch.name} in the list to grab a fresh Share link.`
-            : `Try clicking "Set Video" next to ${ch.name} and pasting its Share link instead — that usually works even when this doesn't.`;
-          wrap.innerHTML = `<div class="empty">
-            <strong>${ch.name}</strong><br><br>${msg}<br><br>${suggestion}<br><br>
-            <a href="${liveUrl}" target="_blank" rel="noopener" style="color:var(--accent)">Open on YouTube ↗</a>
-          </div>`;
-        }
-      }
-    });
-  });
+    case "region_blocked":
+    case "embed_disabled":
+    case "upcoming": {
+      const pid = (meta.primaryVideoId && !isBlocked(meta.primaryVideoId)) ? meta.primaryVideoId : nextPlayable(recentIds, null);
+      mountPlayer(ch, pid, meta.state, { recent, token, startsAt: meta.startsAt });
+      return;
+    }
+    case "offline": {
+      const pid = (meta.primaryVideoId && !isBlocked(meta.primaryVideoId)) ? meta.primaryVideoId : nextPlayable(recentIds, null);
+      if(pid){ mountPlayer(ch, pid, "offline", { recent, token }); return; }
+      playerCard(ch, `“${escapeHtml(ch.name)}” isn't live and has no recent public videos to show. Try again later, or set a video manually.`);
+      return;
+    }
+    case "empty":
+      playerCard(ch, `Couldn't find any videos for this channel — its handle may be wrong (<code>@${escapeHtml(ch.handle)}</code>), or it has no public uploads.`);
+      return;
+    case "error": {
+      const pid = nextPlayable(recentIds, null);
+      if(pid){ mountPlayer(ch, pid, "offline", { recent, token }); return; }
+      playerCard(ch, `The last check for this channel failed (network issue, quota, or the handle couldn't be resolved). It'll retry automatically — or set a video manually.`);
+      return;
+    }
+    default: {
+      // no usable meta (e.g. legacy shape, or API disabled) — best effort
+      const pid = nextPlayable(recentIds, null);
+      if(pid){ mountPlayer(ch, pid, "offline", { recent, token }); return; }
+      playerCard(ch, `Nothing to play for “${escapeHtml(ch.name)}” yet. Use "Fetch All" / click again to auto-detect, or set a video manually.`);
+    }
+  }
 }
 
 render();
@@ -1048,6 +1465,19 @@ let closeMobileNav = () => {};
 document.getElementById("channelSearch").addEventListener("input", applyChannelFilter);
 document.getElementById("apiKeyBtn").addEventListener("click", promptApiKey);
 document.getElementById("fetchAllBtn").addEventListener("click", () => refreshAll(true));
+
+// Manual-override popover wiring
+document.getElementById("mpopSave").addEventListener("click", saveManualPopover);
+document.getElementById("mpopClear").addEventListener("click", clearManualPopover);
+document.getElementById("mpopCancel").addEventListener("click", closeManualPopover);
+document.getElementById("mpopBackdrop").addEventListener("click", closeManualPopover);
+document.getElementById("mpopInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){ e.preventDefault(); saveManualPopover(); }
+  else if(e.key === "Escape") closeManualPopover();
+});
+document.getElementById("manualVideoBtn").addEventListener("click", (e) => {
+  if(currentChannel) openManualPopover(currentChannel, e.currentTarget);
+});
 
 // ---------------------------------------------------------------
 // View switcher — "📺 Channels" / "🗺️ World Map" / "📰 Google News".
