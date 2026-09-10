@@ -95,6 +95,68 @@ expect(
   "https://news.google.com/home?hl=en&gl=US&ceid=US%3Aen"
 );
 
+console.log("hl=ar edition fallback (Google publishes no Arabic edition for most gl):");
+expect(
+  "Russia: would-be hl=ar -> hl=ru",
+  GN.build({ code: "RU", lang: "ar", topic: "top" }),
+  "https://news.google.com/home?hl=ru&gl=RU&ceid=RU%3Aru"
+);
+expect(
+  "Ukraine: would-be hl=ar -> hl=uk",
+  GN.build({ code: "UA", lang: "ar" }),
+  "https://news.google.com/home?hl=uk&gl=UA&ceid=UA%3Auk"
+);
+expect(
+  "France: would-be hl=ar -> hl=fr, topic preserved",
+  GN.build({ code: "FR", lang: "ar", topic: "SPORTS" }),
+  "https://news.google.com/headlines/section/topic/SPORTS?hl=fr&gl=FR&ceid=FR%3Afr"
+);
+expect(
+  "Brazil: multi-part hl (pt-BR) is url-encoded in ceid",
+  GN.build({ code: "BR", lang: "ar" }),
+  "https://news.google.com/home?hl=pt-BR&gl=BR&ceid=BR%3Apt-BR"
+);
+expect(
+  "Egypt: real Arabic edition is left on hl=ar",
+  GN.build({ code: "EG", lang: "ar" }),
+  "https://news.google.com/home?hl=ar&gl=EG&ceid=EG%3Aar"
+);
+expect(
+  "Saudi Arabia: real Arabic edition is left on hl=ar",
+  GN.build({ code: "SA", lang: "ar" }),
+  "https://news.google.com/home?hl=ar&gl=SA&ceid=SA%3Aar"
+);
+expect(
+  "Qatar: no edition at all, but stays Arabic (redirects to EG edition)",
+  GN.build({ code: "QA", lang: "ar" }),
+  "https://news.google.com/home?hl=ar&gl=QA&ceid=QA%3Aar"
+);
+expect(
+  "Iran: no edition; least-wrong hl=fa",
+  GN.build({ code: "IR", lang: "ar" }),
+  "https://news.google.com/home?hl=fa&gl=IR&ceid=IR%3Afa"
+);
+expect(
+  "explicit non-Arabic pick is never rewritten (RU + en stays en)",
+  GN.build({ code: "RU", lang: "en" }),
+  "https://news.google.com/home?hl=en&gl=RU&ceid=RU%3Aen"
+);
+expect("resolveHl RU/ar -> ru", GN.resolveHl("RU", "ar"), "ru");
+expect("resolveHl lowercase ru/ar -> ru", GN.resolveHl("ru", "ar"), "ru");
+expect("resolveHl EG/ar -> ar", GN.resolveHl("EG", "ar"), "ar");
+expect("resolveHl RU/en -> en", GN.resolveHl("RU", "en"), "en");
+expectTrue("editionNote RU/ar is shown", GN.editionNote("RU", "ar").length > 0);
+expectTrue("editionNote QA/ar is shown", GN.editionNote("QA", "ar").length > 0);
+expect("editionNote EG/ar is empty", GN.editionNote("EG", "ar"), "");
+expect("editionNote RU/en is empty (asked en, got en)", GN.editionNote("RU", "en"), "");
+expectTrue(
+  "every EG-only Arab selector country either has a real edition or a note",
+  ["EG", "SA", "AE", "LB", "QA", "RU", "UA", "FR"].every(function (c) {
+    var real = ["EG", "SA", "AE", "LB"].indexOf(c) !== -1;
+    return real ? GN.editionNote(c, "ar") === "" : GN.editionNote(c, "ar").length > 0;
+  })
+);
+
 console.log("Dataset sanity:");
 expectTrue("dataset is a non-empty array", Array.isArray(COUNTRIES) && COUNTRIES.length > 40);
 expectTrue(

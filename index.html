@@ -243,6 +243,8 @@
   .gn-go{color:var(--text);border-color:var(--accent);padding:9px 16px;font-size:13px}
   .gn-go:hover{background:var(--active)}
   .gn-panel-note{color:var(--muted);font-size:12px}
+  .gn-edition-note{font-size:12px;color:#e7b95a;background:rgba(231,185,90,.09);
+    border:1px solid rgba(231,185,90,.28);border-radius:6px;padding:7px 10px;line-height:1.4}
 
   /* Liveuamap is search + chips + an embedded map, not a video grid — on small
      screens it becomes one vertically-scrolling column (chips at natural height,
@@ -373,20 +375,22 @@
 <!-- Optional local config file — not tracked/shared, holds your API key like a .env file would.
      If config.js doesn't exist, this just 404s quietly and the page falls back to the
      🔑 API Key prompt (stored in your browser's localStorage instead). -->
-<script src="config.js"></script>
+<!-- ?v= is a cache-buster: bump it whenever you edit any file in lib/ or data/ or config.js
+     (plain static hosting like `python -m http.server` otherwise serves a stale cached copy). -->
+<script src="config.js?v=2"></script>
 <!-- "World Map" tab: dataset + pure search + UI, loaded as plain scripts (like config.js). -->
-<script src="data/liveuamapCountries.js"></script>
-<script src="lib/liveuamapSearch.js"></script>
-<script src="lib/liveuamapExplorer.js"></script>
+<script src="data/liveuamapCountries.js?v=2"></script>
+<script src="lib/liveuamapSearch.js?v=2"></script>
+<script src="lib/liveuamapExplorer.js?v=2"></script>
 <!-- "Google News" tab: dataset + pure URL builder + UI. Reuses lib/liveuamapSearch.js
      (the country fuzzy-search) and lib/liveuamapExplorer.js (the World Map ↗ cross-link). -->
-<script src="data/googleNewsCountries.js"></script>
-<script src="lib/googleNewsUrl.js"></script>
-<script src="lib/googleNewsExplorer.js"></script>
+<script src="data/googleNewsCountries.js?v=2"></script>
+<script src="lib/googleNewsUrl.js?v=3"></script>
+<script src="lib/googleNewsExplorer.js?v=3"></script>
 <!-- "📺 Channels" tab: pure YouTube discovery/classification logic (live vs
      upcoming vs ended vs blocked, primary-video selection). Fetching stays in
      the main script below; this module just decides. -->
-<script src="lib/youtubeChannel.js"></script>
+<script src="lib/youtubeChannel.js?v=2"></script>
 
 <script>
 // ---------------------------------------------------------------
