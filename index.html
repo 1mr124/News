@@ -52,6 +52,9 @@
   .navtoggle svg{width:14px;height:14px;transition:transform .28s cubic-bezier(.4,0,.2,1)}
   .navtoggle.collapsed svg{transform:rotate(180deg)}
   .navtoggle.mobile{display:none}
+  .category-title{padding:14px 16px 5px;font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.09em;color:var(--text);border-top:1px solid var(--border)}
+  .category-title:first-child{border-top:none}
   .group-title{padding:12px 16px 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
     position:sticky;top:var(--navsearch-h,54px);background:var(--panel);z-index:1}
   .channel{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent}
@@ -395,6 +398,15 @@
 <script>
 // ---------------------------------------------------------------
 // CHANNEL LIST
+// type: "live"    -> outlet runs an always-on 24/7 stream or livestreams
+//                    breaking coverage near-daily. Shown under "Live Streams".
+//                    Autoplays ONLY when a check says it's currently live.
+//       "regular" -> on-demand uploads / documentaries. Shown under
+//                    "News & Documentaries". NEVER autoplays — playback always
+//                    needs a click, like a normal YouTube embed.
+//       The sidebar's two top-level categories are derived from this field
+//       (see categoryOf() in render()); `group` is the sub-heading within a
+//       category and keeps its first-appearance order in this array.
 // id: the UC... ID of the channel that actually carries this outlet's live
 //     stream (verified via the YouTube Data API). Some outlets run their
 //     24/7 stream on a separate "… Live" channel, so `handle` + `id` may
@@ -404,96 +416,116 @@
 // handle: used to build the "Open on YouTube" link (youtube.com/@handle/live).
 // ---------------------------------------------------------------
 const CHANNELS = [
+  // ###############################################################
+  // ##  LIVE STREAMS  (type: "live")
+  // ###############################################################
+
   // ===============================================================
   // INTERNATIONAL / ENGLISH NEWS
   // ===============================================================
-  { group: "International News", name: "Al Jazeera English | Live", handle: "aljazeeraenglish", id: "UCNye-wNBqNL5ZzHSJj3l8Bg" },
-  { group: "International News", name: "BBC News", handle: "bbcnews", id: "UC16niRr50-MSBwiO3YDb3RA" },
-  { group: "International News", name: "Reuters", handle: "reuters", id: "UChqUTb7kYRX8-EiaN3XFrSQ" },
-  { group: "International News", name: "Associated Press", handle: "associatedpress", id: "UC52X5wxOL_s5yw0dQk7NtgA" },
-  { group: "International News", name: "Sky News", handle: "skynews", id: "UCoMdktPbSTixAyNGwb-UYkQ" },
-  { group: "International News", name: "CNN", handle: "cnn", id: "UCupvZG-5ko_eiXAupbDfxWw" },
-  { group: "International News", name: "ABC News", handle: "abcnews", id: "UCBi2mrWuNuyYy4gbM6fU18Q" },
-  { group: "International News", name: "ABC News Australia", handle: "abcnewsaustralia", id: "UCVgO39Bk5sMo66-6o6Spn6Q" },
-  { group: "International News", name: "CBS News", handle: "cbsnews", id: "UC8p1vwvWtl6T73JiExfWs1g" },
-  { group: "International News", name: "NBC News", handle: "nbcnews", id: "UCeY0bbntWzzVIaj2z3QigXg" },
-  { group: "International News", name: "NBC News NOW", handle: "nbcnews", id: "UCeY0bbntWzzVIaj2z3QigXg" },
-  { group: "International News", name: "PBS NewsHour", handle: "pbsnewshour", id: "UC6ZFN9Tx6xh-skXCuRHCDpQ" },
-  { group: "International News", name: "Bloomberg Television", handle: "markets", id: "UCIALMKvObZNtJ6AmdCLP7Lg" },
-  { group: "International News", name: "CNBC", handle: "cnbc", id: "UCvJJ_dzjViJCoLf5uKUTwoA" },
-  { group: "International News", name: "C-SPAN", handle: "cspan", id: "UCb--64Gl51jIEVE-GLDAVTg" },
-  { group: "International News", name: "DW News Live", handle: "dwnews", id: "UCknLrEdhRCp1aegoMqRaCZg" },
-  { group: "International News", name: "DW - en vivo", handle: "dwespanol", id: "UCT4Jg8h03dD0iN3Pb5L0PMA" },
-  { group: "International News", name: "Euronews English Live", handle: "euronews", id: "UCSrZ3UV4jOidv8ppoVuvW9Q" },
-  { group: "International News", name: "France 24 English Live", handle: "france24_en", id: "UCQfwfsi5VrQ8yKZ-UWmAEFg" },
-  { group: "International News", name: "TRT World", handle: "trtworld", id: "UC7fWeaHhqgM4Ry-RMpM2YYw" },
-  { group: "International News", name: "CNA 24/7 LIVE", handle: "channelnewsasia", id: "UC83jt4dlz1Gjl58fzQrrKZg" },
-  { group: "International News", name: "CGTN", handle: "cgtn", id: "UCgrNz-aDmcr2uuto8_DL2jg" },
-  { group: "International News", name: "WION", handle: "wion", id: "UC_gUM8rL-Lrg6O3adPW9K1g" },
-  { group: "International News", name: "NHK WORLD-JAPAN", handle: "nhkworldjapan", id: "UCSPEjw8F2nQDtmUKPFNF7_A" },
-  { group: "International News", name: "NDTV Profit Live TV", handle: "ndtvprofitindia", id: "UC3uJIdRFTGgLWrUziaHbzrg" },
-  { group: "International News", name: "United Nations - LIVE", handle: "unitednations", id: "UC5O114-PQNYkurlTg6hekZw" },
-  { group: "International News", name: "The Guardian", handle: "theguardian", id: "UCHpw8xwDNhU9gdohEcJu4aA" },
+  { group: "International News", type: "live", name: "Al Jazeera English | Live", handle: "aljazeeraenglish", id: "UCNye-wNBqNL5ZzHSJj3l8Bg" },
+  { group: "International News", type: "live", name: "BBC News", handle: "bbcnews", id: "UC16niRr50-MSBwiO3YDb3RA" },
+  { group: "International News", type: "live", name: "Reuters", handle: "reuters", id: "UChqUTb7kYRX8-EiaN3XFrSQ" },
+  { group: "International News", type: "live", name: "Associated Press", handle: "associatedpress", id: "UC52X5wxOL_s5yw0dQk7NtgA" },
+  { group: "International News", type: "live", name: "Sky News", handle: "skynews", id: "UCoMdktPbSTixAyNGwb-UYkQ" },
+  { group: "International News", type: "live", name: "CNN", handle: "cnn", id: "UCupvZG-5ko_eiXAupbDfxWw" },
+  { group: "International News", type: "live", name: "ABC News", handle: "abcnews", id: "UCBi2mrWuNuyYy4gbM6fU18Q" },
+  { group: "International News", type: "live", name: "ABC News Australia", handle: "abcnewsaustralia", id: "UCVgO39Bk5sMo66-6o6Spn6Q" },
+  { group: "International News", type: "live", name: "CBS News", handle: "cbsnews", id: "UC8p1vwvWtl6T73JiExfWs1g" },
+  { group: "International News", type: "live", name: "NBC News", handle: "nbcnews", id: "UCeY0bbntWzzVIaj2z3QigXg" },
+  { group: "International News", type: "live", name: "NBC News NOW", handle: "nbcnews", id: "UCeY0bbntWzzVIaj2z3QigXg" },
+  { group: "International News", type: "live", name: "Bloomberg Television", handle: "markets", id: "UCIALMKvObZNtJ6AmdCLP7Lg" },
+  { group: "International News", type: "live", name: "CNBC", handle: "cnbc", id: "UCvJJ_dzjViJCoLf5uKUTwoA" },
+  { group: "International News", type: "live", name: "C-SPAN", handle: "cspan", id: "UCb--64Gl51jIEVE-GLDAVTg" },
+  { group: "International News", type: "live", name: "DW News Live", handle: "dwnews", id: "UCknLrEdhRCp1aegoMqRaCZg" },
+  { group: "International News", type: "live", name: "DW - en vivo", handle: "dwespanol", id: "UCT4Jg8h03dD0iN3Pb5L0PMA" },
+  { group: "International News", type: "live", name: "Euronews English Live", handle: "euronews", id: "UCSrZ3UV4jOidv8ppoVuvW9Q" },
+  { group: "International News", type: "live", name: "France 24 English Live", handle: "france24_en", id: "UCQfwfsi5VrQ8yKZ-UWmAEFg" },
+  { group: "International News", type: "live", name: "TRT World", handle: "trtworld", id: "UC7fWeaHhqgM4Ry-RMpM2YYw" },
+  { group: "International News", type: "live", name: "CNA 24/7 LIVE", handle: "channelnewsasia", id: "UC83jt4dlz1Gjl58fzQrrKZg" },
+  { group: "International News", type: "live", name: "CGTN", handle: "cgtn", id: "UCgrNz-aDmcr2uuto8_DL2jg" },
+  { group: "International News", type: "live", name: "WION", handle: "wion", id: "UC_gUM8rL-Lrg6O3adPW9K1g" },
+  { group: "International News", type: "live", name: "NHK WORLD-JAPAN", handle: "nhkworldjapan", id: "UCSPEjw8F2nQDtmUKPFNF7_A" },
+  { group: "International News", type: "live", name: "NDTV Profit Live TV", handle: "ndtvprofitindia", id: "UC3uJIdRFTGgLWrUziaHbzrg" },
+  { group: "International News", type: "live", name: "United Nations - LIVE", handle: "unitednations", id: "UC5O114-PQNYkurlTg6hekZw" },
 
   // ===============================================================
   // ARABIC NEWS
   // ===============================================================
-  { group: "Arabic News", name: "الجزيرة (Al Jazeera Arabic)", handle: "aljazeera", id: "UCfiwzLy-8yKzIbsmZTzxDgw", rtl: true },
-  { group: "Arabic News", name: "الجزيرة مباشر (Al Jazeera Mubasher)", handle: "aljazeeramubasher", id: "UCCv1Pd24oPErw5S7zJWltnQ", rtl: true },
-  { group: "Arabic News", name: "العربية (Al Arabiya)", handle: "alarabiya", id: "UCahpxixMCwoANAftn6IxkTg", rtl: true },
-  { group: "Arabic News", name: "الحدث (Al Hadath)", handle: "alhadath", id: "UCrj5BGAhtWxDfqbza9T9hqA", rtl: true },
-  { group: "Arabic News", name: "سكاي نيوز عربية (Sky News Arabia)", handle: "skynewsarabia", id: "UCIJXOvggjKtCagMfxvcCzAA", rtl: true },
-  { group: "Arabic News", name: "BBC News عربي", handle: "bbcnewsarabic", id: "UCelk6aHijZq-GJBBB9YpReA", rtl: true },
-  { group: "Arabic News", name: "الشرق للأخبار (Asharq News)", handle: "asharqnews", id: "UCRJUVYt9gjg8MnlGacySUdg", rtl: true },
-  { group: "Arabic News", name: "العربي (Alaraby TV)", handle: "alarabytv_news", id: "UC65i3Fyq91uiUkIS0i5GLNQ", rtl: true },
-  { group: "Arabic News", name: "RT Arabic", handle: "RTArabic", id: null, rtl: true },
-  { group: "Arabic News", name: "الميادين (Al Mayadeen)", handle: "almayadeentv", id: "UCZCFHCU-2eGF7V5ciMkoPHw", rtl: true },
-  { group: "Arabic News", name: "الحرة (Alhurra)", handle: "alhurra", id: "UCyscVWiJELkATSuU-RF2NLg", rtl: true },
-  { group: "Arabic News", name: "قناة المملكة (AlMamlaka)", handle: "almamlakatv", id: "UC0jiFAzTgl17k7awGbuoYew", rtl: true },
-  { group: "Arabic News", name: "النيل للأخبار (Nile News)", handle: "nilenewstvchannel", id: "UCqNEIF-M6df1pAth2pUVFdQ", rtl: true },
-  { group: "Arabic News", name: "الشرق الأوسط", handle: "aawsat", id: "UCIMti8J7qYjICcr_a39-ocg", rtl: true },
-  { group: "Arabic News", name: "TRT عربي", handle: "trtarabi", id: "UC5GvVahlgulCyo4cshSmbcg", rtl: true },
-  { group: "Arabic News", name: "فرانس 24 عربي (France 24 Arabic)", handle: "france24_ar", id: "UCdTyuXgmJkG_O8_75eqej-w", rtl: true },
-  { group: "Arabic News", name: "DW عربية (DW Arabic)", handle: "dwarabic", id: "UC30ditU5JI16o5NbFsHde_Q", rtl: true },
-  { group: "Arabic News", name: "يورونيوز بالعربية (Euronews Arabic)", handle: "euronewsar", id: "UCqr_xxiCUdqkDS1e4IIb0KA", rtl: true },
+  { group: "Arabic News", type: "live", name: "الجزيرة (Al Jazeera Arabic)", handle: "aljazeera", id: "UCfiwzLy-8yKzIbsmZTzxDgw", rtl: true },
+  { group: "Arabic News", type: "live", name: "الجزيرة مباشر (Al Jazeera Mubasher)", handle: "aljazeeramubasher", id: "UCCv1Pd24oPErw5S7zJWltnQ", rtl: true },
+  { group: "Arabic News", type: "live", name: "العربية (Al Arabiya)", handle: "alarabiya", id: "UCahpxixMCwoANAftn6IxkTg", rtl: true },
+  { group: "Arabic News", type: "live", name: "الحدث (Al Hadath)", handle: "alhadath", id: "UCrj5BGAhtWxDfqbza9T9hqA", rtl: true },
+  { group: "Arabic News", type: "live", name: "سكاي نيوز عربية (Sky News Arabia)", handle: "skynewsarabia", id: "UCIJXOvggjKtCagMfxvcCzAA", rtl: true },
+  { group: "Arabic News", type: "live", name: "BBC News عربي", handle: "bbcnewsarabic", id: "UCelk6aHijZq-GJBBB9YpReA", rtl: true },
+  { group: "Arabic News", type: "live", name: "الشرق للأخبار (Asharq News)", handle: "asharqnews", id: "UCRJUVYt9gjg8MnlGacySUdg", rtl: true },
+  { group: "Arabic News", type: "live", name: "العربي (Alaraby TV)", handle: "alarabytv_news", id: "UC65i3Fyq91uiUkIS0i5GLNQ", rtl: true },
+  { group: "Arabic News", type: "live", name: "RT Arabic", handle: "RTArabic", id: null, rtl: true },
+  { group: "Arabic News", type: "live", name: "الميادين (Al Mayadeen)", handle: "almayadeentv", id: "UCZCFHCU-2eGF7V5ciMkoPHw", rtl: true },
+  { group: "Arabic News", type: "live", name: "الحرة (Alhurra)", handle: "alhurra", id: "UCyscVWiJELkATSuU-RF2NLg", rtl: true },
+  { group: "Arabic News", type: "live", name: "قناة المملكة (AlMamlaka)", handle: "almamlakatv", id: "UC0jiFAzTgl17k7awGbuoYew", rtl: true },
+  { group: "Arabic News", type: "live", name: "النيل للأخبار (Nile News)", handle: "nilenewstvchannel", id: "UCqNEIF-M6df1pAth2pUVFdQ", rtl: true },
+  { group: "Arabic News", type: "live", name: "TRT عربي", handle: "trtarabi", id: "UC5GvVahlgulCyo4cshSmbcg", rtl: true },
+  { group: "Arabic News", type: "live", name: "فرانس 24 عربي (France 24 Arabic)", handle: "france24_ar", id: "UCdTyuXgmJkG_O8_75eqej-w", rtl: true },
+  { group: "Arabic News", type: "live", name: "DW عربية (DW Arabic)", handle: "dwarabic", id: "UC30ditU5JI16o5NbFsHde_Q", rtl: true },
+  { group: "Arabic News", type: "live", name: "يورونيوز بالعربية (Euronews Arabic)", handle: "euronewsar", id: "UCqr_xxiCUdqkDS1e4IIb0KA", rtl: true },
 
   // ===============================================================
   // EGYPTIAN / REGIONAL NEWS
   // ===============================================================
-  { group: "Egypt & Regional", name: "Extra News", handle: "extranewsstream", id: "UC65F33K2cXk9hGDbOQYhTOw", rtl: true },
-  { group: "Egypt & Regional", name: "القاهرة الإخبارية (Cairo News)", handle: "alqaheranewslivestream", id: "UCcu3RolEOalAMef4Lt3uZLg", rtl: true },
-  { group: "Egypt & Regional", name: "صدى البلد (Sada El Balad)", handle: "baladtv", id: "UCJWuV-EkLmRrGZ4afwUBenw", rtl: true },
-  { group: "Egypt & Regional", name: "اليوم السابع (Youm7)", handle: "youm7", id: "UCbnJMCY2WSvvGdqWrOjo8oQ", rtl: true },
+  { group: "Egypt & Regional", type: "live", name: "Extra News", handle: "extranewsstream", id: "UC65F33K2cXk9hGDbOQYhTOw", rtl: true },
+  { group: "Egypt & Regional", type: "live", name: "القاهرة الإخبارية (Cairo News)", handle: "alqaheranewslivestream", id: "UCcu3RolEOalAMef4Lt3uZLg", rtl: true },
+  { group: "Egypt & Regional", type: "live", name: "صدى البلد (Sada El Balad)", handle: "baladtv", id: "UCJWuV-EkLmRrGZ4afwUBenw", rtl: true },
+  { group: "Egypt & Regional", type: "live", name: "اليوم السابع (Youm7)", handle: "youm7", id: "UCbnJMCY2WSvvGdqWrOjo8oQ", rtl: true },
+
+  // ###############################################################
+  // ##  NEWS & DOCUMENTARIES  (type: "regular" — never autoplays)
+  // ###############################################################
+
+  // ===============================================================
+  // NEWS PROGRAMMES — news outlets that don't run an always-on stream
+  // ===============================================================
+  { group: "News Programmes", type: "regular", name: "PBS NewsHour", handle: "pbsnewshour", id: "UC6ZFN9Tx6xh-skXCuRHCDpQ" },
+  { group: "News Programmes", type: "regular", name: "The Guardian", handle: "theguardian", id: "UCHpw8xwDNhU9gdohEcJu4aA" },
+  { group: "News Programmes", type: "regular", name: "الشرق الأوسط", handle: "aawsat", id: "UCIMti8J7qYjICcr_a39-ocg", rtl: true },
 
   // ===============================================================
   // DOCUMENTARIES — ENGLISH
   // ===============================================================
-  { group: "Documentaries", name: "DW Documentary", handle: "dwdocumentary", id: "UCW39zufHfsuGgpLviKh297Q" },
-  { group: "Documentaries", name: "FRONTLINE PBS", handle: "frontline", id: "UC3ScyryU9Oy9Wse3a8OAmYQ" },
-  { group: "Documentaries", name: "PBS Documentaries", handle: "pbsdocumentaries", id: "UCq6OAftTQOuUBRdtUDq5SUA" },
-  { group: "Documentaries", name: "NOVA PBS", handle: "novapbs", id: "UCjHz5SVHeMT0AViCYZvsGDA" },
-  { group: "Documentaries", name: "BBC Earth", handle: "bbcearth", id: "UCwmZiChSryoWQCZMIQezgTg" },
-  { group: "Documentaries", name: "National Geographic", handle: "natgeo", id: "UCpVm7bg6pXKo1Pr6k5kxG9A" },
-  { group: "Documentaries", name: "VICE", handle: "vice", id: "UCn8zNIfYAQNdrFRrr8oibKw" },
-  { group: "Documentaries", name: "Real Stories", handle: "realstories", id: "UCu4XcDBdnZkV6-5z2f16M0g" },
-  { group: "Documentaries", name: "Free Documentary", handle: "freedocumentary", id: "UCijcd0GR0fkxCAZwkiuWqtQ" },
-  { group: "Documentaries", name: "Vox", handle: "vox", id: "UCLXo7UDZvByw2ixzpQCufnA" },
-  { group: "Documentaries", name: "Timeline", handle: "timelinechannel", id: "UC88lvyJe7aHZmcvzvubDFRg" },
-  { group: "Documentaries", name: "History Hit", handle: "historyhit", id: "UCZwU2G-KVl-P-O-B35chZOQ" },
-  { group: "Documentaries", name: "Smithsonian Channel", handle: "smithsonianchannel", id: "UCWqPRUsJlZaDp-PVbqEch9g" },
-  { group: "Documentaries", name: "National Film Board of Canada", handle: "nfb", id: "UCeihXBww7ckKsKDF3JX13gA" },
-  { group: "Documentaries", name: "US National Archives", handle: "usnationalarchives", id: "UCnAsiniI4DF7vAAe7omWWFQ" },
-  { group: "Documentaries", name: "SLICE", handle: "slicedocumentary", id: "UCvziXdVCN7PMdFZEFZ6aEqQ" },
+  { group: "Documentaries", type: "regular", name: "DW Documentary", handle: "dwdocumentary", id: "UCW39zufHfsuGgpLviKh297Q" },
+  { group: "Documentaries", type: "regular", name: "FRONTLINE PBS", handle: "frontline", id: "UC3ScyryU9Oy9Wse3a8OAmYQ" },
+  { group: "Documentaries", type: "regular", name: "PBS Documentaries", handle: "pbsdocumentaries", id: "UCq6OAftTQOuUBRdtUDq5SUA" },
+  { group: "Documentaries", type: "regular", name: "NOVA PBS", handle: "novapbs", id: "UCjHz5SVHeMT0AViCYZvsGDA" },
+  { group: "Documentaries", type: "regular", name: "BBC Earth", handle: "bbcearth", id: "UCwmZiChSryoWQCZMIQezgTg" },
+  { group: "Documentaries", type: "regular", name: "National Geographic", handle: "natgeo", id: "UCpVm7bg6pXKo1Pr6k5kxG9A" },
+  { group: "Documentaries", type: "regular", name: "VICE", handle: "vice", id: "UCn8zNIfYAQNdrFRrr8oibKw" },
+  { group: "Documentaries", type: "regular", name: "Real Stories", handle: "realstories", id: "UCu4XcDBdnZkV6-5z2f16M0g" },
+  { group: "Documentaries", type: "regular", name: "Free Documentary", handle: "freedocumentary", id: "UCijcd0GR0fkxCAZwkiuWqtQ" },
+  { group: "Documentaries", type: "regular", name: "Vox", handle: "vox", id: "UCLXo7UDZvByw2ixzpQCufnA" },
+  { group: "Documentaries", type: "regular", name: "Timeline", handle: "timelinechannel", id: "UC88lvyJe7aHZmcvzvubDFRg" },
+  { group: "Documentaries", type: "regular", name: "History Hit", handle: "historyhit", id: "UCZwU2G-KVl-P-O-B35chZOQ" },
+  { group: "Documentaries", type: "regular", name: "Smithsonian Channel", handle: "smithsonianchannel", id: "UCWqPRUsJlZaDp-PVbqEch9g" },
+  { group: "Documentaries", type: "regular", name: "National Film Board of Canada", handle: "nfb", id: "UCeihXBww7ckKsKDF3JX13gA" },
+  { group: "Documentaries", type: "regular", name: "US National Archives", handle: "usnationalarchives", id: "UCnAsiniI4DF7vAAe7omWWFQ" },
+  { group: "Documentaries", type: "regular", name: "SLICE", handle: "slicedocumentary", id: "UCvziXdVCN7PMdFZEFZ6aEqQ" },
+
+  // ===============================================================
+  // WAR & MILITARY HISTORY
+  // ===============================================================
+  { group: "War & Military History", type: "regular", name: "War Stories", handle: "WarStoriesChannel", id: "UC3fOzMSxcmCXZLmAM9vy1IQ" },
+  { group: "War & Military History", type: "regular", name: "The Great War", handle: "TheGreatWar", id: "UCUcyEsEjhPEDf69RRVhRh4A" },
+  { group: "War & Military History", type: "regular", name: "World War Two", handle: "WorldWarTwo", id: "UCP1AejCL4DA7jYkZAELRhHQ" },
+  { group: "War & Military History", type: "regular", name: "Kings and Generals", handle: "KingsandGenerals", id: "UCMmaBzfCCwZ2KqaBJjkj0fw" },
 
   // ===============================================================
   // DOCUMENTARIES — ARABIC
   // ===============================================================
-  { group: "Arabic Documentaries", name: "الجزيرة الوثائقية", handle: "aljazeeradocumentary", id: "UC0LSnqrwqtMwl2YwfUpO66g", rtl: true },
-  { group: "Arabic Documentaries", name: "وثائقية دي دبليو (DW Documentary Arabic)", handle: "dwdocarabia", id: "UCET6sWl4Xcu-U8Ka9PJPrwA", rtl: true },
-  { group: "Arabic Documentaries", name: "الشرق ديسكفري (Asharq Documentary)", handle: "asharqdoc", id: "UCArK7aSQ68vRCiJY2m7spkA", rtl: true },
-  { group: "Arabic Documentaries", name: "National Geographic أبوظبي", handle: "natgeoabudhabime", id: "UCLiTe0aOHShx7hXGyqZ9UIw", rtl: true },
-  { group: "Arabic Documentaries", name: "AlWathaeqya", handle: "alwathaeqya", id: "UCs1XyCCdk9q15Lec94zd5JQ", rtl: true },
-  { group: "Arabic Documentaries", name: "EF Network", handle: "efnetwork", id: "UC8UMer6lHgbnj6XCNQIL-Pw", rtl: true },
+  { group: "Arabic Documentaries", type: "regular", name: "الجزيرة الوثائقية", handle: "aljazeeradocumentary", id: "UC0LSnqrwqtMwl2YwfUpO66g", rtl: true },
+  { group: "Arabic Documentaries", type: "regular", name: "وثائقية دي دبليو (DW Documentary Arabic)", handle: "dwdocarabia", id: "UCET6sWl4Xcu-U8Ka9PJPrwA", rtl: true },
+  { group: "Arabic Documentaries", type: "regular", name: "الشرق ديسكفري (Asharq Documentary)", handle: "asharqdoc", id: "UCArK7aSQ68vRCiJY2m7spkA", rtl: true },
+  { group: "Arabic Documentaries", type: "regular", name: "National Geographic أبوظبي", handle: "natgeoabudhabime", id: "UCLiTe0aOHShx7hXGyqZ9UIw", rtl: true },
+  { group: "Arabic Documentaries", type: "regular", name: "AlWathaeqya", handle: "alwathaeqya", id: "UCs1XyCCdk9q15Lec94zd5JQ", rtl: true },
+  { group: "Arabic Documentaries", type: "regular", name: "EF Network", handle: "efnetwork", id: "UC8UMer6lHgbnj6XCNQIL-Pw", rtl: true },
 ];
 
 const STORAGE_KEY = "newstv_custom_ids_v1";       // resolved UC… channel IDs (handle -> id cache)
@@ -750,7 +782,10 @@ async function discoverChannel(ch, opts){
 
   // Backstop: the uploads scan found nothing live/upcoming — try the pricey
   // live-search index once (it sometimes has a stream the playlist doesn't).
-  if(opts.allowSearch && !haveLiveOrUpcoming && channelId && ch.liveBehavior !== "recent"
+  // Skipped for "regular" channels: they don't livestream, so the 100-unit
+  // search would only ever burn quota. Their recent uploads are still scanned.
+  if(opts.allowSearch && !haveLiveOrUpcoming && channelId
+     && ch.liveBehavior !== "recent" && ch.type !== "regular"
      && !isQuotaExceeded() && !isApiKeyInvalid()){
     const liveIds = await fetchLiveSearchIds(channelId);
     if(Array.isArray(liveIds) && liveIds.length){
@@ -982,41 +1017,55 @@ function setActiveRow(ch){
   if(row) row.classList.add("active");
 }
 
+// The sidebar has two top-level categories, each derived from a channel's
+// `type` field, with the existing `group` values as sub-headings nested under
+// them (first-appearance order within a category, as before).
+const CATEGORY_ORDER = ["Live Streams", "News & Documentaries"];
+const categoryOf = ch => ch.type === "regular" ? "News & Documentaries" : "Live Streams";
+
 function render(){
   const navList = document.getElementById("navList");
   navList.innerHTML = "";
-  const groups = [...new Set(CHANNELS.map(c => c.group))];
   const frag = document.createDocumentFragment();
-  groups.forEach(g => {
-    const h = document.createElement("div");
-    h.className = "group-title";
-    h.textContent = g;
-    frag.appendChild(h);
-    CHANNELS.filter(c => c.group === g).forEach(ch => {
-      const row = document.createElement("div");
-      row.className = "channel";
-      row.dataset.handle = ch.handle;
-      row.dataset.name = `${ch.name} ${ch.handle}`.toLowerCase();
-      if(ch.rtl) row.setAttribute("dir", "rtl");
-      const hasManual = !!getManualVideo(ch);
-      const badge = getBadge(ch);
+  CATEGORY_ORDER.forEach(cat => {
+    const inCat = CHANNELS.filter(c => categoryOf(c) === cat);
+    if(!inCat.length) return;
+    const catEl = document.createElement("div");
+    catEl.className = "category-title";
+    catEl.textContent = cat;
+    frag.appendChild(catEl);
+    const groups = [...new Set(inCat.map(c => c.group))];
+    groups.forEach(g => {
+      const h = document.createElement("div");
+      h.className = "group-title";
+      h.textContent = g;
+      frag.appendChild(h);
+      inCat.filter(c => c.group === g).forEach(ch => {
+        const row = document.createElement("div");
+        row.className = "channel";
+        row.dataset.handle = ch.handle;
+        row.dataset.name = `${ch.name} ${ch.handle}`.toLowerCase();
+        if(ch.rtl) row.setAttribute("dir", "rtl");
+        const hasManual = !!getManualVideo(ch);
+        const badge = getBadge(ch);
 
-      row.innerHTML = `
-        <div class="name">${ch.name}<small>@${ch.handle}</small></div>
-        <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <span class="badge${badge.cls ? " " + badge.cls : ""}" title="${badge.title}">${badge.text}</span>
-          <button class="fixbtn">${hasManual ? "Update" : "Set Video"}</button>
-        </span>
-      `;
-      row.addEventListener("click", (e) => {
-        if(e.target.closest(".fixbtn")) return; // handled separately
-        playChannel(ch);
+        row.innerHTML = `
+          <div class="name">${ch.name}<small>@${ch.handle}</small></div>
+          <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <span class="badge${badge.cls ? " " + badge.cls : ""}" title="${badge.title}">${badge.text}</span>
+            <button class="fixbtn">${hasManual ? "Update" : "Set Video"}</button>
+          </span>
+        `;
+        row.addEventListener("click", (e) => {
+          if(e.target.closest(".fixbtn")) return; // handled separately
+          playChannel(ch);
+        });
+        row.querySelector(".fixbtn").addEventListener("click", (e) => {
+          e.stopPropagation();
+          openManualPopover(ch, e.currentTarget);
+        });
+        frag.appendChild(row);
       });
-      row.querySelector(".fixbtn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        openManualPopover(ch, e.currentTarget);
-      });
-      frag.appendChild(row);
     });
   });
   navList.appendChild(frag);
@@ -1027,21 +1076,29 @@ function applyChannelFilter(){
   const input = document.getElementById("channelSearch");
   const q = input ? input.value.trim().toLowerCase() : "";
   const navList = document.getElementById("navList");
+  let currentCat = null;
+  let catHasVisible = false;
   let currentHeader = null;
   let groupHasVisible = false;
   let anyVisible = false;
-  navList.querySelectorAll(".group-title, .channel").forEach(el => {
-    if(el.classList.contains("group-title")){
-      if(currentHeader) currentHeader.hidden = !groupHasVisible;
+  const finalizeGroup = () => { if(currentHeader) currentHeader.hidden = !groupHasVisible; };
+  const finalizeCat = () => { if(currentCat) currentCat.hidden = !catHasVisible; };
+  navList.querySelectorAll(".category-title, .group-title, .channel").forEach(el => {
+    if(el.classList.contains("category-title")){
+      finalizeGroup(); finalizeCat();
+      currentCat = el; catHasVisible = false;
+      currentHeader = null; groupHasVisible = false;
+    } else if(el.classList.contains("group-title")){
+      finalizeGroup();
       currentHeader = el;
       groupHasVisible = false;
     } else {
       const visible = !q || el.dataset.name.includes(q);
       el.hidden = !visible;
-      if(visible){ groupHasVisible = true; anyVisible = true; }
+      if(visible){ groupHasVisible = true; catHasVisible = true; anyVisible = true; }
     }
   });
-  if(currentHeader) currentHeader.hidden = !groupHasVisible;
+  finalizeGroup(); finalizeCat();
   let noResults = document.getElementById("noResults");
   if(q && !anyVisible){
     if(!noResults){
@@ -1278,7 +1335,11 @@ function mountPlayer(ch, videoId, state, ctx){
   if(LIVE_STATES[state]) renderRecentGrid(ch, [], null);
   else renderRecentGrid(ch, recent, videoId);
 
-  const embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+  // Autoplay ONLY for a "live"-type channel that a check says is currently live
+  // (LIVE_STATES covers "live" / "manual_live"). "regular" channels and any
+  // recent-video / offline fallback load paused — playback needs a click.
+  const wantAutoplay = !!LIVE_STATES[state] && ch.type === "live";
+  const embedSrc = `https://www.youtube.com/embed/${videoId}?${wantAutoplay ? "autoplay=1&" : ""}enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
   wrap.innerHTML = `<iframe id="ytplayer" src="${embedSrc}" frameborder="0"
       allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     <div class="hint" id="playerHint"></div>`;

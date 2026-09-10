@@ -4,6 +4,23 @@ How the **📺 Channels** tab decides what to show for each outlet. Logic lives 
 `lib/youtubeChannel.js` (pure, unit-tested by `scripts/youtubeChannel.test.js`);
 fetching + rendering live in `index.html`.
 
+## Channel `type` — grouping & autoplay
+
+Every entry in the `CHANNELS` array has a `type`:
+
+- **`"live"`** — outlet runs an always-on 24/7 stream or livestreams breaking
+  coverage near-daily. Listed under the **Live Streams** category. The player
+  autoplays **only** when a discovery check reports it currently live
+  (`meta.state` is `live` / `manual_live` — the `LIVE_STATES` map). A `live`
+  channel that's currently offline falls back to recent videos and loads paused.
+- **`"regular"`** — on-demand uploads / documentaries. Listed under the
+  **News & Documentaries** category. **Never autoplays** under any state; the
+  100-unit `search.list?eventType=live` backstop is skipped for these.
+
+The sidebar's two top-level categories are derived from `type`
+(`categoryOf()` in `render()`); the `group` field is the sub-heading within a
+category and keeps its first-appearance order in the array.
+
 ## Fallback hierarchy (per channel)
 
 1. **Manual override** — `manualLiveVideo` in the `CHANNELS` config, or a value
@@ -33,7 +50,7 @@ fetching + rendering live in `index.html`.
 | Resolve `@handle` → `UC…` id | `channels.list?forHandle` | 1 | once per handle, cached in `newstv_custom_ids_v1` |
 | Recent uploads (+ active live shows up here as the newest item) | `playlistItems.list` on the `UU…` uploads playlist | 1 | every discovery |
 | Classify up to 50 ids | `videos.list?part=snippet,liveStreamingDetails,status,contentDetails` | 1 / 50 ids | every discovery, and the bulk re-check in "Fetch All" |
-| Backstop live search | `search.list?eventType=live&order=date` | 100 | single-channel click only, and only when the uploads scan found no live/upcoming — never in bulk "Fetch All" |
+| Backstop live search | `search.list?eventType=live&order=date` | 100 | single-channel click only, only when the uploads scan found no live/upcoming, and only for `type: "live"` channels — never in bulk "Fetch All" |
 
 "Fetch All" over ~70 channels costs **~140 units** (1 + ~70 + ~70), versus
 ~4,000–7,000 with the old per-channel `search.list`. Results are cached for 15
