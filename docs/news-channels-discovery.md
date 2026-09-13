@@ -66,6 +66,14 @@ min (`REFRESH_TTL_MS`); failed checks retry after 3 min.
   when picking a video, cleared for a channel when it is re-discovered.
 - `newstv_region` — optional ISO-3166-1 alpha-2 code; when set, feeds the
   `regionRestriction` check in `classifyVideo`.
+- `newstv_user_channels_v1` — user-added channels ("+ Add Channel"): array of
+  `{ handle, id, name, group: "My Channels", type: "live", userAdded: true,
+  addedAt }`. Merged in memory after the built-in `CHANNELS` array, so user
+  rows use the same discovery/player/fallback pipeline. Validated by
+  `YouTubeChannel.isUserChannel()` / `sanitizeUserChannels()`; identity for
+  duplicate checks is the UC… id first, lowercase handle second
+  (`findChannelDuplicate()`). Removing a user row also clears its manual
+  override and cached discovery result. Built-in rows are never mutated.
 
 ## Known limitations
 

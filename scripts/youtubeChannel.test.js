@@ -156,6 +156,61 @@ var r8 = YT.pickPrimary([
 ]);
 eq("de-dupe: one recent entry", r8.recent.length, 1);
 
+// -- parseChannelReference -------------------------------------------
+console.log("parseChannelReference:");
+eq("bare UC id", YT.parseChannelReference("UCoMdktPbSTixAyNGwb-UYkQ"), { kind: "id", value: "UCoMdktPbSTixAyNGwb-UYkQ" });
+eq("bare UC id, padded", YT.parseChannelReference("  UCoMdktPbSTixAyNGwb-UYkQ  "), { kind: "id", value: "UCoMdktPbSTixAyNGwb-UYkQ" });
+eq("channel url", YT.parseChannelReference("https://www.youtube.com/channel/UCoMdktPbSTixAyNGwb-UYkQ"), { kind: "id", value: "UCoMdktPbSTixAyNGwb-UYkQ" });
+eq("channel url, no scheme", YT.parseChannelReference("youtube.com/channel/UC16niRr50-MSBwiO3YDb3RA"), { kind: "id", value: "UC16niRr50-MSBwiO3YDb3RA" });
+eq("handle url", YT.parseChannelReference("https://www.youtube.com/@skynews"), { kind: "handle", value: "skynews" });
+eq("handle url + subpath", YT.parseChannelReference("https://www.youtube.com/@skynews/live"), { kind: "handle", value: "skynews" });
+eq("bare @handle", YT.parseChannelReference("@skynews"), { kind: "handle", value: "skynews" });
+eq("bare handle", YT.parseChannelReference("skynews"), { kind: "handle", value: "skynews" });
+eq("handle with dot/dash", YT.parseChannelReference("@my.news-channel"), { kind: "handle", value: "my.news-channel" });
+eq("legacy /c/ flagged unsupported", YT.parseChannelReference("https://www.youtube.com/c/SkyNews"), { kind: "unsupported", legacy: "custom", value: "SkyNews" });
+eq("legacy /user/ flagged unsupported", YT.parseChannelReference("https://www.youtube.com/user/SkyNews"), { kind: "unsupported", legacy: "user", value: "SkyNews" });
+eq("video url rejected", YT.parseChannelReference("https://www.youtube.com/watch?v=lk0PX03twOM"), null);
+eq("youtu.be rejected", YT.parseChannelReference("https://youtu.be/7nncuuV30DE"), null);
+eq("bare video id rejected", YT.parseChannelReference("7nncuuV30DE"), null);
+eq("non-youtube rejected", YT.parseChannelReference("https://example.com/@skynews"), null);
+eq("empty rejected", YT.parseChannelReference("   "), null);
+eq("null rejected", YT.parseChannelReference(null), null);
+eq("bare @ rejected", YT.parseChannelReference("@"), null);
+
+// -- isUserChannel ---------------------------------------------------
+console.log("isUserChannel:");
+eq("valid user row", YT.isUserChannel({ name: "X", handle: "xnews", id: "UCoMdktPbSTixAyNGwb-UYkQ", type: "live", group: "My Channels" }), true);
+eq("null id allowed", YT.isUserChannel({ name: "X", handle: "xnews", id: null, type: "live", group: "My Channels" }), true);
+eq("bad id rejected", YT.isUserChannel({ name: "X", handle: "xnews", id: "nope", type: "live", group: "My Channels" }), false);
+eq("bad handle rejected", YT.isUserChannel({ name: "X", handle: "@x news", id: null, type: "live", group: "My Channels" }), false);
+eq("bad type rejected", YT.isUserChannel({ name: "X", handle: "xnews", id: null, type: "vod", group: "My Channels" }), false);
+eq("null rejected", YT.isUserChannel(null), false);
+
+// -- findChannelDuplicate / sanitizeUserChannels --------------------
+console.log("findChannelDuplicate:");
+var dupList = [
+  { name: "Sky News", handle: "skynews", id: "UCoMdktPbSTixAyNGwb-UYkQ", type: "live", group: "International News" },
+  { name: "Mine", handle: "mynews", id: "UC16niRr50-MSBwiO3YDb3RA", type: "live", group: "My Channels" },
+];
+eq("by id", YT.findChannelDuplicate("UCoMdktPbSTixAyNGwb-UYkQ", "other", dupList).name, "Sky News");
+eq("by handle, case-insensitive", YT.findChannelDuplicate(null, "SKYNEWS", dupList).name, "Sky News");
+eq("no match", YT.findChannelDuplicate("UCBi2mrWuNuyYy4gbM6fU18Q", "brandnew", dupList), null);
+eq("empty list", YT.findChannelDuplicate("UCBi2mrWuNuyYy4gbM6fU18Q", "brandnew", []), null);
+
+console.log("sanitizeUserChannels:");
+var dirty = [
+  { name: "Good", handle: "goodnews", id: "UCoMdktPbSTixAyNGwb-UYkQ", type: "live", group: "My Channels" },
+  { name: "Bad id", handle: "badnews", id: "nope", type: "live", group: "My Channels" },
+  null,
+  { name: "Dupe id", handle: "othernews", id: "UCoMdktPbSTixAyNGwb-UYkQ", type: "live", group: "My Channels" },
+  { name: "Dupe handle", handle: "GOODNEWS", id: "UC16niRr50-MSBwiO3YDb3RA", type: "live", group: "My Channels" },
+];
+var clean = YT.sanitizeUserChannels(dirty);
+eq("keeps only first valid of each id/handle", clean.length, 1);
+eq("kept row is the first valid", clean[0].handle, "goodnews");
+eq("non-array -> []", YT.sanitizeUserChannels(null), []);
+eq("throws never on garbage", YT.sanitizeUserChannels("junk").length, 0);
+
 console.log("");
 console.log(pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);

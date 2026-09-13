@@ -128,6 +128,17 @@
   .mpop input:focus{outline:none;border-color:var(--accent)}
   .mpop-err{color:#f87171;font-size:12px}
   .mpop-row{display:flex;align-items:center;gap:8px}
+  /* Add Channel dialog reuses the .mpop popover pattern; the preview block
+     below shows the resolved channel before confirming. */
+  .aprev{display:flex;align-items:center;gap:10px;background:var(--panel);
+    border:1px solid var(--border);border-radius:8px;padding:9px 10px}
+  .aprev img{width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#000}
+  .aprev-name{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+  .aprev-sub{font-size:11.5px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+  .aprev-dup{font-size:12px;color:#f0b429;background:rgba(240,180,41,.09);
+    border:1px solid rgba(240,180,41,.28);border-radius:6px;padding:7px 10px;line-height:1.4}
+  .rmbtn{background:none;border:none;color:var(--muted);font-size:13px;padding:3px 5px;border-radius:6px;cursor:pointer;flex-shrink:0}
+  .rmbtn:hover{color:#f87171}
 
   ::-webkit-scrollbar{width:8px}
   ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
@@ -319,6 +330,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <small id="statusline"></small>
+    <button class="hdrbtn" id="addChannelBtn" title="Add a YouTube news channel to your list">+ Add Channel</button>
     <button class="hdrbtn" id="fetchAllBtn" title="Check which channels are live right now">⟳ Fetch All</button>
     <button class="hdrbtn" id="apiKeyBtn" title="Set your YouTube Data API key">🔑 API Key</button>
   </div>
@@ -372,6 +384,30 @@
 </div>
 <div class="mpop-backdrop" id="mpopBackdrop" hidden></div>
 
+<!-- Add Channel dialog. Reuses the .mpop popover pattern: paste a channel URL,
+     @handle, or UC… channel ID; resolve it via the YouTube Data API (1 unit);
+     preview the resolved channel; confirm to persist it to localStorage
+     (newstv_user_channels_v1) and merge it into the channel list. -->
+<div class="mpop" id="addChannelPopover" hidden role="dialog" aria-modal="false" aria-labelledby="addChTitle">
+  <div class="mpop-title" id="addChTitle">Add YouTube Channel</div>
+  <div class="mpop-sub">Paste a channel URL, @handle, or channel ID (UC…).</div>
+  <input type="text" id="addChInput" autocomplete="off" spellcheck="false"
+         placeholder="https://www.youtube.com/@skynews  or  UC…">
+  <div class="mpop-err" id="addChErr" hidden></div>
+  <div class="aprev" id="addChPreview" hidden>
+    <img id="addChThumb" alt="" hidden>
+    <div><div class="aprev-name" id="addChName"></div><div class="aprev-sub" id="addChSub"></div></div>
+  </div>
+  <div class="aprev-dup" id="addChDup" hidden></div>
+  <div class="mpop-row">
+    <button class="hdrbtn" id="addChResolve" type="button">Look up</button>
+    <button class="hdrbtn" id="addChConfirm" type="button" hidden>Add channel</button>
+    <span class="toolbar-spacer"></span>
+    <button class="hdrbtn" id="addChCancel" type="button">Cancel</button>
+  </div>
+</div>
+<div class="mpop-backdrop" id="addChBackdrop" hidden></div>
+
 <section id="liveuamapView" hidden aria-label="World Map"></section>
 <section id="googleNewsView" hidden aria-label="Google News"></section>
 
@@ -393,7 +429,7 @@
 <!-- "📺 Channels" tab: pure YouTube discovery/classification logic (live vs
      upcoming vs ended vs blocked, primary-video selection). Fetching stays in
      the main script below; this module just decides. -->
-<script src="lib/youtubeChannel.js?v=2"></script>
+<script src="lib/youtubeChannel.js?v=3"></script>
 
 <script>
 // ---------------------------------------------------------------
@@ -572,6 +608,34 @@ const customIdStore = createStore(STORAGE_KEY);
 const videoIdStore = createStore(VIDEO_STORAGE_KEY);
 const metaStore = createStore(META_KEY);
 const blockedVideoStore = createStore(BLOCKED_KEY);
+
+// ---------------------------------------------------------------
+// User-added channels ("+ Add Channel").
+//
+// Built-in CHANNELS above is compile-time static config and is never mutated.
+// User rows persist as an array in localStorage under USER_CHANNELS_KEY and
+// are merged in memory via getAllChannels(), so every existing flow
+// (resolve/discover/classify/render/filter/badges/manual override) treats
+// them exactly like built-ins. Shape is validated by YTC.isUserChannel()
+// both on load (sanitize) and on insert.
+// ---------------------------------------------------------------
+const USER_CHANNELS_KEY = "newstv_user_channels_v1";
+const USER_CHANNEL_GROUP = "My Channels";
+function loadUserChannels(){
+  let raw = null;
+  try{ raw = localStorage.getItem(USER_CHANNELS_KEY); }catch(e){ return []; }
+  if(raw === null) return [];
+  try{ return YTC.sanitizeUserChannels(JSON.parse(raw)); }catch(e){ return []; }
+}
+function saveUserChannels(arr){
+  try{ localStorage.setItem(USER_CHANNELS_KEY, JSON.stringify(arr || [])); }catch(e){}
+}
+function getAllChannels(){ return CHANNELS.concat(loadUserChannels()); }
+function isUserAdded(ch){ return !!(ch && ch.userAdded); }
+function findChannelByHandle(handle){
+  const norm = String(handle || "").toLowerCase();
+  return getAllChannels().find(c => String(c.handle || "").toLowerCase() === norm) || null;
+}
 
 function getApiKey(){ return (window.YOUTUBE_API_KEY && window.YOUTUBE_API_KEY.trim()) || localStorage.getItem(API_KEY_STORAGE) || ""; }
 function apiKeyFromConfig(){ return !!(window.YOUTUBE_API_KEY && window.YOUTUBE_API_KEY.trim()); }
@@ -859,7 +923,7 @@ async function refreshAll(force){
   // here; a dead one just gets state "manual_unavailable" so the row can offer
   // Update / Clear.
   const known = [];
-  CHANNELS.forEach(ch => {
+  getAllChannels().forEach(ch => {
     const meta = getMeta(ch);
     [meta && meta.liveVideoId, meta && meta.primaryVideoId, getManualVideo(ch)]
       .filter(Boolean).forEach(id => known.push({ ch, id, manual: id === getManualVideo(ch) }));
@@ -901,7 +965,7 @@ async function refreshAll(force){
   // Phase 2: cheap per-channel discovery (resolve handle + uploads scan +
   // videos.list — ~2 units each, NO 100-unit live search) for channels that
   // are still stale. New channels, or ones whose known video just ended.
-  const needsDiscovery = CHANNELS.filter(ch => !isFresh(ch));
+  const needsDiscovery = getAllChannels().filter(ch => !isFresh(ch));
   for(let i = 0; i < needsDiscovery.length; i++){
     if(isQuotaExceeded() || isApiKeyInvalid()) break;
     const ch = needsDiscovery[i];
@@ -1028,7 +1092,7 @@ function render(){
   navList.innerHTML = "";
   const frag = document.createDocumentFragment();
   CATEGORY_ORDER.forEach(cat => {
-    const inCat = CHANNELS.filter(c => categoryOf(c) === cat);
+    const inCat = getAllChannels().filter(c => categoryOf(c) === cat);
     if(!inCat.length) return;
     const catEl = document.createElement("div");
     catEl.className = "category-title";
@@ -1053,17 +1117,23 @@ function render(){
           <div class="name">${ch.name}<small>@${ch.handle}</small></div>
           <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
             <span class="badge${badge.cls ? " " + badge.cls : ""}" title="${badge.title}">${badge.text}</span>
-            <button class="fixbtn">${hasManual ? "Update" : "Set Video"}</button>
+            <button class="fixbtn">${hasManual ? "Update" : "Set Video"}</button>${isUserAdded(ch) ? '<button class="rmbtn" title="Remove this channel">✕</button>' : ""}
           </span>
         `;
         row.addEventListener("click", (e) => {
-          if(e.target.closest(".fixbtn")) return; // handled separately
+          if(e.target.closest(".fixbtn") || e.target.closest(".rmbtn")) return; // handled separately
           playChannel(ch);
         });
         row.querySelector(".fixbtn").addEventListener("click", (e) => {
           e.stopPropagation();
           openManualPopover(ch, e.currentTarget);
         });
+        if(isUserAdded(ch)){
+          row.querySelector(".rmbtn").addEventListener("click", (e) => {
+            e.stopPropagation();
+            removeUserChannel(ch);
+          });
+        }
         frag.appendChild(row);
       });
     });
@@ -1191,6 +1261,183 @@ function clearManualPopover(){
   updateChannelRow(ch);
   closeManualPopover();
   playChannel(ch);
+}
+
+// ---------------------------------------------------------------
+// Add Channel dialog ("+ Add Channel").
+//
+// Accepts a channel URL, @handle URL / bare handle, or UC… channel ID;
+// resolves it via channels.list (1 quota unit, same ytApiGet plumbing as
+// the rest of the app); previews the resolved channel; on confirm persists
+// it to USER_CHANNELS_KEY and re-renders. The new row then flows through
+// the standard discover/play/manual/embed pipeline untouched.
+// Error semantics stay distinct: invalid input vs not-found vs API/quota/
+// network failure vs duplicate — a failed lookup is never "not found".
+// ---------------------------------------------------------------
+let pendingAdd = null;   // { id, handle, title, thumb } awaiting confirmation
+let addChLookupToken = 0;   // bumped on open/close/lookup so a stale async result bails out (same pattern as playToken)
+async function resolveChannelReference(ref){
+  const key = getApiKey();
+  if(!key) return { status: "no-key" };
+  const params = ref.kind === "id"
+    ? `id=${encodeURIComponent(ref.value)}`
+    : `forHandle=${encodeURIComponent(ref.value)}`;
+  const data = await ytApiGet(`https://www.googleapis.com/youtube/v3/channels?part=id,snippet&${params}&key=${key}`);
+  if(!data){
+    if(isQuotaExceeded()) return { status: "quota" };
+    if(isApiKeyInvalid()) return { status: "bad-key" };
+    return { status: "network" };
+  }
+  const item = data.items && data.items[0];
+  if(!item) return { status: "not-found" };
+  const snip = item.snippet || {};
+  const customUrl = typeof snip.customUrl === "string" && snip.customUrl.charAt(0) === "@"
+    ? snip.customUrl.slice(1) : null;
+  const thumbs = snip.thumbnails || {};
+  return {
+    status: "ok",
+    id: item.id,
+    title: snip.title || ref.value,
+    handle: customUrl || (ref.kind === "handle" ? ref.value : "channel-" + String(item.id).slice(2, 10).toLowerCase()),
+    thumb: (thumbs.default && thumbs.default.url) || (thumbs.medium && thumbs.medium.url) || null,
+  };
+}
+function addChShowError(msg){
+  const err = document.getElementById("addChErr");
+  if(!msg){ err.hidden = true; err.textContent = ""; return; }
+  err.textContent = msg;
+  err.hidden = false;
+}
+function addChSetBusy(busy){
+  document.getElementById("addChResolve").disabled = busy;
+  document.getElementById("addChConfirm").disabled = busy;
+  document.getElementById("addChInput").disabled = busy;
+}
+function openAddChannel(){
+  pendingAdd = null;
+  addChLookupToken++;
+  document.getElementById("addChInput").value = "";
+  document.getElementById("addChPreview").hidden = true;
+  document.getElementById("addChDup").hidden = true;
+  document.getElementById("addChConfirm").hidden = true;
+  addChShowError(null);
+  addChSetBusy(false);
+  document.getElementById("addChannelPopover").hidden = false;
+  document.getElementById("addChBackdrop").hidden = false;
+  const input = document.getElementById("addChInput");
+  input.focus(); input.select();
+}
+function closeAddChannel(){
+  addChLookupToken++;
+  document.getElementById("addChannelPopover").hidden = true;
+  document.getElementById("addChBackdrop").hidden = true;
+  pendingAdd = null;
+}
+async function lookupAddChannel(){
+  const raw = document.getElementById("addChInput").value || "";
+  document.getElementById("addChPreview").hidden = true;
+  document.getElementById("addChDup").hidden = true;
+  document.getElementById("addChConfirm").hidden = true;
+  pendingAdd = null;
+  const ref = YTC.parseChannelReference(raw);
+  if(!ref){
+    addChShowError("That doesn't look like a channel link, @handle, or channel ID. Paste a channel URL, @handle, or UC… ID — not a video link.");
+    return;
+  }
+  if(ref.kind === "unsupported"){
+    addChShowError("Custom channel URLs (/c/… or /user/…) can't be resolved automatically — use the @handle or the UC… channel ID instead.");
+    return;
+  }
+  addChShowError(null);
+  addChSetBusy(true);
+  document.getElementById("addChResolve").textContent = "Looking up…";
+  const myLookup = ++addChLookupToken;
+  const res = await resolveChannelReference(ref);
+  if(myLookup !== addChLookupToken) return;   // superseded by a newer lookup / close / reopen
+  document.getElementById("addChResolve").textContent = "Look up";
+  addChSetBusy(false);
+  if(res.status === "no-key"){
+    addChShowError("Set a free YouTube API key first (🔑 button above, or via config.js), then look up the channel again.");
+    return;
+  }
+  if(res.status === "quota"){
+    addChShowError("Today's YouTube API quota is used up — try again after it resets (midnight Pacific time). Nothing was added.");
+    return;
+  }
+  if(res.status === "bad-key"){
+    addChShowError("Your YouTube API key looks invalid — fix it via the 🔑 button or config.js, then try again. Nothing was added.");
+    return;
+  }
+  if(res.status === "network"){
+    addChShowError("Couldn't reach YouTube (network or API error) — try again. This doesn't mean the channel doesn't exist; nothing was added.");
+    return;
+  }
+  if(res.status === "not-found"){
+    addChShowError("No YouTube channel was found for that reference. Check the link, @handle, or channel ID and try again.");
+    return;
+  }
+  const dupe = YTC.findChannelDuplicate(res.id, res.handle, getAllChannels());
+  document.getElementById("addChName").textContent = res.title;
+  document.getElementById("addChSub").textContent = `@${res.handle} · ${res.id}`;
+  const thumb = document.getElementById("addChThumb");
+  if(res.thumb){ thumb.src = res.thumb; thumb.hidden = false; } else { thumb.hidden = true; }
+  document.getElementById("addChPreview").hidden = false;
+  if(dupe){
+    const dupEl = document.getElementById("addChDup");
+    dupEl.textContent = `Already in your list as “${dupe.name}” — adding it again would create a duplicate.`;
+    dupEl.hidden = false;
+    return;
+  }
+  pendingAdd = res;
+  document.getElementById("addChConfirm").hidden = false;
+  document.getElementById("addChConfirm").focus();
+}
+function confirmAddChannel(){
+  if(!pendingAdd) return;
+  const dupe = YTC.findChannelDuplicate(pendingAdd.id, pendingAdd.handle, getAllChannels());
+  if(dupe){
+    const dupEl = document.getElementById("addChDup");
+    dupEl.textContent = `Already in your list as “${dupe.name}” — adding it again would create a duplicate.`;
+    dupEl.hidden = false;
+    document.getElementById("addChConfirm").hidden = true;
+    pendingAdd = null;
+    return;
+  }
+  const row = {
+    group: USER_CHANNEL_GROUP, type: "live",
+    name: pendingAdd.title, handle: pendingAdd.handle, id: pendingAdd.id,
+    userAdded: true, addedAt: Date.now(),
+  };
+  // Defensive: the resolved handle comes from the API (customUrl) — if it
+  // ever fails the row contract, refuse rather than claim success while
+  // sanitizeUserChannels() silently drops it on save.
+  if(!YTC.isUserChannel(row)){
+    addChShowError("YouTube returned an unexpected channel reference that can't be stored. Nothing was added.");
+    pendingAdd = null;
+    return;
+  }
+  const next = loadUserChannels().concat([row]);
+  saveUserChannels(YTC.sanitizeUserChannels(next));
+  const added = findChannelByHandle(row.handle);
+  closeAddChannel();
+  // A filter that would hide the new row is cleared so the addition is visible.
+  const search = document.getElementById("channelSearch");
+  if(search && search.value){ search.value = ""; }
+  render();
+  setStatus(`Added “${row.name}” to ${USER_CHANNEL_GROUP}.`);
+  setTimeout(() => { if(document.getElementById("statusline").textContent.startsWith("Added “")) setStatus(""); }, 4000);
+  if(added) playChannel(added);   // standard check-on-click discovery + fallback pipeline
+}
+function removeUserChannel(ch){
+  if(!isUserAdded(ch)) return;
+  if(!confirm(`Remove “${ch.name}” (@${ch.handle}) from your channels?\n\nIts manual override and cached status will be cleared too.`)) return;
+  saveUserChannels(loadUserChannels().filter(c => !(c.id && ch.id ? c.id === ch.id : String(c.handle).toLowerCase() === String(ch.handle).toLowerCase())));
+  metaStore.remove(ch.handle);
+  videoIdStore.remove(ch.handle);
+  if(currentChannel && String(currentChannel.handle).toLowerCase() === String(ch.handle).toLowerCase()) currentChannel = null;
+  render();
+  setStatus(`Removed “${ch.name}”.`);
+  setTimeout(() => { if(document.getElementById("statusline").textContent.startsWith("Removed “")) setStatus(""); }, 4000);
 }
 
 // ---------------------------------------------------------------
@@ -1531,6 +1778,17 @@ document.getElementById("channelSearch").addEventListener("input", applyChannelF
 document.getElementById("apiKeyBtn").addEventListener("click", promptApiKey);
 document.getElementById("fetchAllBtn").addEventListener("click", () => refreshAll(true));
 
+// Add Channel dialog wiring
+document.getElementById("addChannelBtn").addEventListener("click", openAddChannel);
+document.getElementById("addChResolve").addEventListener("click", lookupAddChannel);
+document.getElementById("addChConfirm").addEventListener("click", confirmAddChannel);
+document.getElementById("addChCancel").addEventListener("click", closeAddChannel);
+document.getElementById("addChBackdrop").addEventListener("click", closeAddChannel);
+document.getElementById("addChInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){ e.preventDefault(); lookupAddChannel(); }
+  else if(e.key === "Escape") closeAddChannel();
+});
+
 // Manual-override popover wiring
 document.getElementById("mpopSave").addEventListener("click", saveManualPopover);
 document.getElementById("mpopClear").addEventListener("click", clearManualPopover);
@@ -1557,7 +1815,7 @@ document.getElementById("manualVideoBtn").addEventListener("click", (e) => {
   const mapView = document.getElementById("liveuamapView");
   const newsView = document.getElementById("googleNewsView");
   // header controls that only make sense on the Channels view
-  const channelOnly = ["statusline", "fetchAllBtn", "apiKeyBtn", "navToggleMobile", "navToggle"]
+  const channelOnly = ["statusline", "addChannelBtn", "fetchAllBtn", "apiKeyBtn", "navToggleMobile", "navToggle"]
     .map(id => document.getElementById(id)).filter(Boolean);
 
   const VIEWS = [
