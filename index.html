@@ -331,6 +331,9 @@
   <div style="display:flex;align-items:center;gap:10px">
     <small id="statusline"></small>
     <button class="hdrbtn" id="addChannelBtn" title="Add a YouTube news channel to your list">+ Add Channel</button>
+    <button class="hdrbtn" id="exportChannelsBtn" title="Download your custom channels as a JSON backup">Export</button>
+    <button class="hdrbtn" id="importChannelsBtn" title="Restore custom channels from a JSON backup">Import</button>
+    <input type="file" id="importChannelsFile" accept=".json,application/json" hidden>
     <button class="hdrbtn" id="fetchAllBtn" title="Check which channels are live right now">⟳ Fetch All</button>
     <button class="hdrbtn" id="apiKeyBtn" title="Set your YouTube Data API key">🔑 API Key</button>
   </div>
@@ -429,7 +432,7 @@
 <!-- "📺 Channels" tab: pure YouTube discovery/classification logic (live vs
      upcoming vs ended vs blocked, primary-video selection). Fetching stays in
      the main script below; this module just decides. -->
-<script src="lib/youtubeChannel.js?v=3"></script>
+<script src="lib/youtubeChannel.js?v=4"></script>
 
 <script>
 // ---------------------------------------------------------------
@@ -628,9 +631,29 @@ function loadUserChannels(){
   try{ return YTC.sanitizeUserChannels(JSON.parse(raw)); }catch(e){ return []; }
 }
 function saveUserChannels(arr){
-  try{ localStorage.setItem(USER_CHANNELS_KEY, JSON.stringify(arr || [])); }catch(e){}
+  // Returns true only if the write verifiably landed in localStorage, so the
+  // UI never claims "saved" when persistence actually failed (e.g. private
+  // mode / quota / disabled storage). Never throws, never exposes details.
+  try{
+    localStorage.setItem(USER_CHANNELS_KEY, JSON.stringify(arr || []));
+  }catch(e){ return false; }
+  try{
+    const raw = localStorage.getItem(USER_CHANNELS_KEY);
+    if(raw === null) return false;
+    JSON.parse(raw);
+    return true;
+  }catch(e){ return false; }
 }
-function getAllChannels(){ return CHANNELS.concat(loadUserChannels()); }
+// Session-only fallback: rows that could not be persisted (storage failure)
+// still work for this page load but are not written anywhere. Kept separate
+// from localStorage so a failed write can never corrupt the saved list.
+let sessionOnlyChannels = [];
+function getAllChannels(){
+  const persisted = loadUserChannels();
+  const seen = new Set(persisted.map(c => String(c.handle || "").toLowerCase()));
+  const extra = sessionOnlyChannels.filter(c => !seen.has(String(c.handle || "").toLowerCase()));
+  return CHANNELS.concat(persisted).concat(extra);
+}
 function isUserAdded(ch){ return !!(ch && ch.userAdded); }
 function findChannelByHandle(handle){
   const norm = String(handle || "").toLowerCase();
@@ -899,6 +922,10 @@ async function discoverChannel(ch, opts){
 }
 
 function setStatus(text){ document.getElementById("statusline").textContent = text; }
+function flashStatus(msg, ms){
+  setStatus(msg);
+  setTimeout(() => { if(document.getElementById("statusline").textContent === msg) setStatus(""); }, ms || 6000);
+}
 
 async function refreshAll(force){
   const key = getApiKey();
@@ -1416,28 +1443,123 @@ function confirmAddChannel(){
     pendingAdd = null;
     return;
   }
-  const next = loadUserChannels().concat([row]);
-  saveUserChannels(YTC.sanitizeUserChannels(next));
+  const next = YTC.sanitizeUserChannels(loadUserChannels().concat([row]));
+  const saved = saveUserChannels(next);
+  if(!saved){
+    // Persistence failed — keep the row for this session only so playback
+    // still works, but be honest that it won't survive a reload.
+    if(!YTC.findChannelDuplicate(row.id, row.handle, sessionOnlyChannels)) sessionOnlyChannels.push(row);
+  }
   const added = findChannelByHandle(row.handle);
   closeAddChannel();
   // A filter that would hide the new row is cleared so the addition is visible.
   const search = document.getElementById("channelSearch");
   if(search && search.value){ search.value = ""; }
   render();
-  setStatus(`Added “${row.name}” to ${USER_CHANNEL_GROUP}.`);
-  setTimeout(() => { if(document.getElementById("statusline").textContent.startsWith("Added “")) setStatus(""); }, 4000);
+  const addMsg = saved
+    ? `Added “${row.name}” to ${USER_CHANNEL_GROUP}.`
+    : `Channel added for this session, but could not be saved permanently (browser storage unavailable).`;
+  setStatus(addMsg);
+  setTimeout(() => { if(document.getElementById("statusline").textContent === addMsg) setStatus(""); }, 6000);
   if(added) playChannel(added);   // standard check-on-click discovery + fallback pipeline
 }
 function removeUserChannel(ch){
+  // Built-ins are protected: only rows carrying userAdded can be removed.
   if(!isUserAdded(ch)) return;
   if(!confirm(`Remove “${ch.name}” (@${ch.handle}) from your channels?\n\nIts manual override and cached status will be cleared too.`)) return;
-  saveUserChannels(loadUserChannels().filter(c => !(c.id && ch.id ? c.id === ch.id : String(c.handle).toLowerCase() === String(ch.handle).toLowerCase())));
+  const match = c => (c.id && ch.id ? c.id === ch.id : String(c.handle).toLowerCase() === String(ch.handle).toLowerCase());
+  const saved = saveUserChannels(loadUserChannels().filter(c => !match(c)));
+  sessionOnlyChannels = sessionOnlyChannels.filter(c => !match(c));
+  if(!saved){
+    flashStatus(`Could not save the removal permanently (browser storage unavailable). The channel is hidden for this session.`, 6000);
+  } else {
+    setStatus(`Removed “${ch.name}”.`);
+    setTimeout(() => { if(document.getElementById("statusline").textContent.startsWith("Removed “")) setStatus(""); }, 4000);
+  }
+  // User-specific state only: manual override + cached discovery + resolved-id
+  // cache for this handle. Built-in rows use distinct handles, so nothing
+  // unrelated is touched. Blocklist entries are per-video-id and left alone.
   metaStore.remove(ch.handle);
   videoIdStore.remove(ch.handle);
+  customIdStore.remove(ch.handle);
   if(currentChannel && String(currentChannel.handle).toLowerCase() === String(ch.handle).toLowerCase()) currentChannel = null;
   render();
-  setStatus(`Removed “${ch.name}”.`);
-  setTimeout(() => { if(document.getElementById("statusline").textContent.startsWith("Removed “")) setStatus(""); }, 4000);
+}
+
+// ---------------------------------------------------------------
+// User-channel backup: export / import.
+//
+// Export contains ONLY persistent channel definitions (+ version/schema
+// fields) — never live state, cached video metadata, or discovery state.
+// Import validates + sanitizes with the existing YTC helpers, matches
+// duplicates by canonical UC id first (then handle), never touches the
+// built-in CHANNELS array, and never writes when the payload is invalid.
+// ---------------------------------------------------------------
+function exportUserChannels(){
+  const payload = YTC.buildUserChannelsExport(loadUserChannels());
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  const day = new Date().toISOString().slice(0, 10);
+  a.href = URL.createObjectURL(blob);
+  a.download = `newstv-channels-${day}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  flashStatus(payload.channels.length
+    ? `Exported ${payload.channels.length} channel${payload.channels.length === 1 ? "" : "s"}.`
+    : "Nothing to export — no custom channels yet.", 4000);
+}
+function importUserChannelsFromText(text){
+  let parsed;
+  try{ parsed = JSON.parse(text); }
+  catch(e){
+    flashStatus("Import failed — that file is not valid JSON. Nothing was changed.", 6000);
+    return;
+  }
+  const res = YTC.parseUserChannelsImport(parsed);
+  if(!res || !res.ok){
+    flashStatus(res && res.error === "version"
+      ? "Import failed — unsupported backup version. Nothing was changed."
+      : "Import failed — no valid channels found in that file. Nothing was changed.", 6000);
+    return;
+  }
+  // Validate fully before touching storage: dupe-check against everything
+  // (built-ins first, so they can never be overwritten) by canonical UC id.
+  const existing = getAllChannels();
+  const fresh = [];
+  let skipped = 0;
+  res.channels.forEach(c => {
+    if(YTC.findChannelDuplicate(c.id, c.handle, existing.concat(fresh))) skipped++;
+    else fresh.push(c);
+  });
+  if(!fresh.length){
+    flashStatus(skipped
+      ? `Nothing new to import — ${skipped} already in your list.`
+      : "Import failed — no valid channels found in that file. Nothing was changed.", 6000);
+    return;
+  }
+  const next = YTC.sanitizeUserChannels(loadUserChannels().concat(fresh));
+  const saved = saveUserChannels(next);
+  if(!saved){
+    fresh.forEach(c => {
+      if(!YTC.findChannelDuplicate(c.id, c.handle, sessionOnlyChannels)) sessionOnlyChannels.push(c);
+    });
+  }
+  const search = document.getElementById("channelSearch");
+  if(search && search.value){ search.value = ""; }
+  render();
+  flashStatus(saved
+    ? `Imported ${fresh.length} channel${fresh.length === 1 ? "" : "s"}${skipped ? ` (${skipped} duplicate${skipped === 1 ? "" : "s"} skipped)` : ""}.`
+    : `Channels imported for this session, but could not be saved permanently (browser storage unavailable).`, 6000);
+}
+function handleImportFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => importUserChannelsFromText(String(reader.result || ""));
+  reader.onerror = () => {
+    flashStatus("Import failed — could not read that file. Nothing was changed.", 6000);
+  };
+  reader.readAsText(file);
 }
 
 // ---------------------------------------------------------------
@@ -1778,6 +1900,14 @@ document.getElementById("channelSearch").addEventListener("input", applyChannelF
 document.getElementById("apiKeyBtn").addEventListener("click", promptApiKey);
 document.getElementById("fetchAllBtn").addEventListener("click", () => refreshAll(true));
 
+// Export / import wiring (custom channels backup)
+document.getElementById("exportChannelsBtn").addEventListener("click", exportUserChannels);
+document.getElementById("importChannelsBtn").addEventListener("click", () => document.getElementById("importChannelsFile").click());
+document.getElementById("importChannelsFile").addEventListener("change", (e) => {
+  handleImportFile(e.target.files && e.target.files[0]);
+  e.target.value = ""; // allow re-selecting the same file
+});
+
 // Add Channel dialog wiring
 document.getElementById("addChannelBtn").addEventListener("click", openAddChannel);
 document.getElementById("addChResolve").addEventListener("click", lookupAddChannel);
@@ -1815,7 +1945,7 @@ document.getElementById("manualVideoBtn").addEventListener("click", (e) => {
   const mapView = document.getElementById("liveuamapView");
   const newsView = document.getElementById("googleNewsView");
   // header controls that only make sense on the Channels view
-  const channelOnly = ["statusline", "addChannelBtn", "fetchAllBtn", "apiKeyBtn", "navToggleMobile", "navToggle"]
+  const channelOnly = ["statusline", "addChannelBtn", "exportChannelsBtn", "importChannelsBtn", "fetchAllBtn", "apiKeyBtn", "navToggleMobile", "navToggle"]
     .map(id => document.getElementById(id)).filter(Boolean);
 
   const VIEWS = [
